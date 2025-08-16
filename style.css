@@ -184,6 +184,31 @@ button:disabled {
     margin-bottom: 10px;
 }
 
+/* Leaderboard Styles */
+.leaderboard table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.leaderboard th, .leaderboard td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.leaderboard th {
+    background-color: #f2f2f2;
+}
+
+.leaderboard tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.leaderboard span {
+    cursor: help;
+}
+
 .choice-actions {
     margin: 20px 0;
 }

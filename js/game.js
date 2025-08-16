@@ -56,13 +56,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="new-game-btn" data-turns="60">${languageManager.get('UI.longGame')}</button>
             </div>
             <div id="other-options">
-                <button disabled>${languageManager.get('UI.scoreboard')}</button>
+                <button id="scoreboard-btn">${languageManager.get('UI.scoreboard')}</button>
                 <button disabled>${languageManager.get('UI.credits')}</button>
             </div>
         `;
 
         document.getElementById('lang-fr').addEventListener('click', () => languageManager.setLang('fr'));
         document.getElementById('lang-en').addEventListener('click', () => languageManager.setLang('en'));
+        document.getElementById('scoreboard-btn').addEventListener('click', showLeaderboard);
 
         document.querySelectorAll('.new-game-btn').forEach(button => {
             button.addEventListener('click', (e) => {
@@ -225,6 +226,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function saveScore(scoreData) {
+        const scores = JSON.parse(localStorage.getItem('businessWarScores')) || [];
+        scores.push(scoreData);
+        scores.sort((a, b) => b.score - a.score);
+        // Keep top 10 scores
+        if (scores.length > 10) {
+            scores.length = 10;
+        }
+        localStorage.setItem('businessWarScores', JSON.stringify(scores));
+    }
+
     function gameOver(message) {
         const ownedBusinesses = gameState.allBusinesses.filter(b => b.owner === 'player');
         const totalBusinessValue = ownedBusinesses.reduce((sum, b) => {
@@ -233,17 +245,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 0);
         const finalScore = gameState.money - gameState.debt + totalBusinessValue;
 
+        const avgRD = ownedBusinesses.length > 0 ? (ownedBusinesses.reduce((sum, b) => sum + b.rdLevel, 0) / ownedBusinesses.length * 100).toFixed(0) : 0;
+        const avgComp = ownedBusinesses.length > 0 ? (ownedBusinesses.reduce((sum, b) => sum + b.competitiveness, 0) / ownedBusinesses.length * 100).toFixed(0) : 0;
+
+        saveScore({
+            score: finalScore,
+            reputation: gameState.reputation,
+            businesses: ownedBusinesses.length,
+            avgRD: avgRD,
+            avgComp: avgComp
+        });
+
         gameScreen.innerHTML = `
             <div id="game-over">
                 <h1>${languageManager.get('UI.gameOverTitle')}</h1>
                 <p>${message}</p>
                 <h2>${languageManager.get('UI.finalScore')}</h2>
                 <div class="business-stats-grid">
-                    <span>${languageManager.get('UI.finalMoney')}:</span><span>${gameState.money.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
-                    <span>${languageManager.get('UI.debt')}:</span><span>(${gameState.debt.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })})</span>
-                    <span>${languageManager.get('UI.businessValue')}:</span><span>${totalBusinessValue.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
-                    <hr><hr>
-                    <span>${languageManager.get('UI.totalScore')}:</span><span>${finalScore.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
+                    <span>${languageManager.get('UI.netWorth')}:</span><span>${finalScore.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
+                    <span>${languageManager.get('UI.reputation')}:</span><span>${gameState.reputation}</span>
+                    <span>${languageManager.get('UI.ownedBusinesses')}:</span><span>${ownedBusinesses.length}</span>
+                    <span>${languageManager.get('UI.avgRD')}:</span><span>${avgRD}%</span>
+                    <span>${languageManager.get('UI.avgComp')}:</span><span>${avgComp}%</span>
                 </div>
                 <button id="restart-btn">${languageManager.get('UI.playAgain')}</button>
             </div>
@@ -583,6 +606,55 @@ document.addEventListener('DOMContentLoaded', () => {
         nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';
+    }
+
+    function showLeaderboard() {
+        const scores = JSON.parse(localStorage.getItem('businessWarScores')) || [];
+        const modal = document.getElementById('modal');
+
+        let leaderboardHTML = `
+            <div id="modal-content" class="leaderboard">
+                <h2>${languageManager.get('UI.leaderboardTitle')}</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>${languageManager.get('UI.leaderboardRank')}</th>
+                            <th>${languageManager.get('UI.leaderboardScore')}</th>
+                            <th>${languageManager.get('UI.leaderboardStats')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        if (scores.length > 0) {
+            scores.forEach((score, index) => {
+                leaderboardHTML += `
+                    <tr>
+                        <td>#${index + 1}</td>
+                        <td>${score.score.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</td>
+                        <td>
+                            <span title="${languageManager.get('UI.reputation')}">Rep: ${score.reputation}</span> |
+                            <span title="${languageManager.get('UI.ownedBusinesses')}">Biz: ${score.businesses}</span> |
+                            <span title="${languageManager.get('UI.avgRD')}">R&D: ${score.avgRD}%</span> |
+                            <span title="${languageManager.get('UI.avgComp')}">Comp: ${score.avgComp}%</span>
+                        </td>
+                    </tr>
+                `;
+            });
+        } else {
+            leaderboardHTML += `<tr><td colspan="3">No scores yet.</td></tr>`;
+        }
+
+        leaderboardHTML += `
+                    </tbody>
+                </table>
+                <button id="close-modal-btn">${languageManager.get('UI.close')}</button>
+            </div>
+        `;
+
+        modal.innerHTML = leaderboardHTML;
+        modal.style.display = 'flex';
+        document.getElementById('close-modal-btn').addEventListener('click', () => modal.style.display = 'none');
     }
 
     renderHomeScreen();

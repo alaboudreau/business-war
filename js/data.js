@@ -86,7 +86,15 @@ const i18nData = {
             rdLevelTooLow: "Niveau de R&D trop faible pour lancer un produit!",
             launchProductLog: "Nouveau lancement de produit réussi pour {businessName}!",
             strategicPlanSuccessLog: "La planification stratégique a augmenté les revenus de {businessName}.",
-            strategicPlanFailLog: "La planification stratégique n'a pas eu d'effet notable pour {businessName}."
+            strategicPlanFailLog: "La planification stratégique n'a pas eu d'effet notable pour {businessName}.",
+            netWorth: "Avoir",
+            avgRD: "Moyenne R&D",
+            avgComp: "Moyenne Compétitivité",
+            ownedBusinesses: "Entreprises possédées",
+            leaderboardTitle: "Tableau des scores",
+            leaderboardRank: "Rang",
+            leaderboardScore: "Score",
+            leaderboardStats: "Stats"
         }
     },
     en: {
@@ -176,7 +184,15 @@ const i18nData = {
             rdLevelTooLow: "R&D level too low to launch a product!",
             launchProductLog: "Successful new product launch for {businessName}!",
             strategicPlanSuccessLog: "Strategic planning increased revenue for {businessName}.",
-            strategicPlanFailLog: "Strategic planning had no noticeable effect for {businessName}."
+            strategicPlanFailLog: "Strategic planning had no noticeable effect for {businessName}.",
+            netWorth: "Net Worth",
+            avgRD: "Average R&D",
+            avgComp: "Average Competitiveness",
+            ownedBusinesses: "Owned Businesses",
+            leaderboardTitle: "Leaderboard",
+            leaderboardRank: "Rank",
+            leaderboardScore: "Score",
+            leaderboardStats: "Stats"
         }
     }
 };

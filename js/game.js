@@ -1,6 +1,27 @@
 document.addEventListener('DOMContentLoaded', () => {
     const homeScreen = document.getElementById('home-screen');
     const gameScreen = document.getElementById('game-screen');
+    const backgroundContainer = document.getElementById('background-container');
+
+    const countryBackgrounds = {
+        'default': 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=800',
+        'USA': 'https://images.unsplash.com/photo-1499092346589-b9b6be3e94b2?w=800',
+        'Chine': 'https://images.unsplash.com/photo-1543350946-7a1999862903?w=800',
+        'China': 'https://images.unsplash.com/photo-1543350946-7a1999862903?w=800',
+        'Allemagne': 'https://images.unsplash.com/photo-1526498460520-4c246339dccb?w=800',
+        'Germany': 'https://images.unsplash.com/photo-1526498460520-4c246339dccb?w=800',
+        'Japon': 'https://images.unsplash.com/photo-1542051841857-5f90071e7989?w=800',
+        'Japan': 'https://images.unsplash.com/photo-1542051841857-5f90071e7989?w=800',
+        'France': 'https://images.unsplash.com/photo-1502602898657-3e91760c0337?w=800',
+        'Canada': 'https://images.unsplash.com/photo-1503442143-3809d9437326?w=800',
+        'Royaume-Uni': 'https://images.unsplash.com/photo-1505761671935-60b3a742750f?w=800',
+        'United Kingdom': 'https://images.unsplash.com/photo-1505761671935-60b3a742750f?w=800'
+    };
+
+    function updateBackground(countryName = 'default') {
+        const url = countryBackgrounds[countryName] || countryBackgrounds['default'];
+        backgroundContainer.style.backgroundImage = `url(${url})`;
+    }
 
     const languageManager = {
         currentLang: 'fr',
@@ -43,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let nextBusinessId = 1;
 
     function renderHomeScreen() {
+        updateBackground();
         homeScreen.innerHTML = `
             <h1>Business War</h1>
             <div id="lang-switcher">
@@ -149,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateGameScreen() {
         const lang = languageManager.currentLang;
         const currentCountry = i18nData[lang].COUNTRIES[gameState.currentCountryIndex];
+        updateBackground(currentCountry.name);
         const ownedBusinesses = gameState.allBusinesses.filter(b => b.owner === 'player' && b.countryIndex === gameState.currentCountryIndex);
         const marketBusinesses = gameState.allBusinesses.filter(b => b.owner === null && b.countryIndex === gameState.currentCountryIndex);
 

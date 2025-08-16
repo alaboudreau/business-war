@@ -632,8 +632,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const rdEffectiveness = modifiers.rdEffectiveness || 1.0;
 
         gameState.money -= cost;
-        business.rdLevel = Math.min(1, business.rdLevel + (0.1 * rdEffectiveness));
-        business.competitiveness = Math.min(1, business.competitiveness + (0.05 * rdEffectiveness));
+        business.rdLevel = Math.min(1, business.rdLevel + (0.15 * rdEffectiveness));
+        business.competitiveness = Math.min(1, business.competitiveness * 1.25);
         logEvent(languageManager.get('UI.investRDLog').replace('{businessName}', business.name));
         nextTurn();
         updateGameScreen();
@@ -673,12 +673,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function launchProduct(businessId) {
         const business = gameState.allBusinesses.find(b => b.id === businessId);
-        if (business.rdLevel < 0.5) { alert(languageManager.get('UI.rdLevelTooLow')); return; }
 
-        business.revenue *= 1.5;
-        business.cost *= 1.25;
-        business.rdLevel *= 0.5;
-        logEvent(languageManager.get('UI.launchProductLog').replace('{businessName}', business.name));
+        const successChance = business.rdLevel * business.competitiveness;
+        business.rdLevel *= 0.5; // R&D is always consumed
+
+        if (Math.random() < successChance) {
+            // Success
+            business.revenue *= 1.5;
+            business.cost *= 1.25;
+            logEvent(languageManager.get('UI.launchProductLog').replace('{businessName}', business.name));
+        } else {
+            // Failure
+            logEvent(languageManager.get('UI.launchProductFailLog').replace('{businessName}', business.name));
+        }
+
         nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';

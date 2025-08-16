@@ -96,6 +96,10 @@ button:disabled {
     display: inline-block;
 }
 
+.sell-btn {
+    background-color: #dc3545; /* Red */
+}
+
 /* Modal Styles */
 #modal {
     display: none; /* Hidden by default */

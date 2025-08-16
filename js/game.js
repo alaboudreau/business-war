@@ -155,14 +155,14 @@ document.addEventListener('DOMContentLoaded', () => {
         gameScreen.innerHTML = `
             <div>
                 <h2>${currentCountry.name}</h2>
-                <p>${languageManager.get('UI.day')}: ${gameState.maxTurns - gameState.turns + 1} / ${gameState.maxTurns}</p>
+                <p>📅 ${languageManager.get('UI.day')}: ${gameState.maxTurns - gameState.turns + 1} / ${gameState.maxTurns}</p>
             </div>
             <div id="player-stats">
                 <h3>${languageManager.get('UI.stats')}</h3>
-                <p>${languageManager.get('UI.money')}: ${gameState.money.toLocaleString(lang, { style: 'currency', currency: 'USD' })}</p>
-                <p>${languageManager.get('UI.debt')}: ${gameState.debt.toLocaleString(lang, { style: 'currency', currency: 'USD' })}</p>
-                <p>${languageManager.get('UI.reputation')}: ${gameState.reputation}</p>
-                <p>${languageManager.get('UI.businesses')}: ${gameState.allBusinesses.filter(b => b.owner === 'player').length}</p>
+                <p>💰 ${languageManager.get('UI.money')}: ${gameState.money.toLocaleString(lang, { style: 'currency', currency: 'USD' })}</p>
+                <p>💳 ${languageManager.get('UI.debt')}: ${gameState.debt.toLocaleString(lang, { style: 'currency', currency: 'USD' })}</p>
+                <p>📈 ${languageManager.get('UI.reputation')}: ${gameState.reputation}</p>
+                <p>🏢 ${languageManager.get('UI.businesses')}: ${gameState.allBusinesses.filter(b => b.owner === 'player').length}</p>
             </div>
             <div id="actions">
                 <h3>${languageManager.get('UI.actions')}</h3>
@@ -318,11 +318,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p>${message}</p>
                 <h2>${languageManager.get('UI.finalScore')}</h2>
                 <div class="business-stats-grid">
-                    <span>${languageManager.get('UI.netWorth')}:</span><span>${finalScore.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
-                    <span>${languageManager.get('UI.reputation')}:</span><span>${gameState.reputation}</span>
-                    <span>${languageManager.get('UI.ownedBusinesses')}:</span><span>${ownedBusinesses.length}</span>
-                    <span>${languageManager.get('UI.avgRD')}:</span><span>${avgRD}%</span>
-                    <span>${languageManager.get('UI.avgComp')}:</span><span>${avgComp}%</span>
+                    <span>🏆 ${languageManager.get('UI.netWorth')}:</span><span>${finalScore.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
+                    <span>📈 ${languageManager.get('UI.reputation')}:</span><span>${gameState.reputation}</span>
+                    <span>🏢 ${languageManager.get('UI.ownedBusinesses')}:</span><span>${ownedBusinesses.length}</span>
+                    <span>🔬 ${languageManager.get('UI.avgRD')}:</span><span>${avgRD}%</span>
+                    <span>⚖️ ${languageManager.get('UI.avgComp')}:</span><span>${avgComp}%</span>
                 </div>
                 <button id="restart-btn">${languageManager.get('UI.playAgain')}</button>
             </div>
@@ -741,10 +741,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td>#${index + 1}</td>
                         <td>${score.score.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</td>
                         <td>
-                            <span title="${languageManager.get('UI.reputation')}">Rep: ${score.reputation}</span> |
-                            <span title="${languageManager.get('UI.ownedBusinesses')}">Biz: ${score.businesses}</span> |
-                            <span title="${languageManager.get('UI.avgRD')}">R&D: ${score.avgRD}%</span> |
-                            <span title="${languageManager.get('UI.avgComp')}">Comp: ${score.avgComp}%</span>
+                            <span title="${languageManager.get('UI.reputation')}">📈 ${score.reputation}</span> |
+                            <span title="${languageManager.get('UI.ownedBusinesses')}">🏢 ${score.businesses}</span> |
+                            <span title="${languageManager.get('UI.avgRD')}">🔬 ${score.avgRD}%</span> |
+                            <span title="${languageManager.get('UI.avgComp')}">⚖️ ${score.avgComp}%</span>
                         </td>
                     </tr>
                 `;

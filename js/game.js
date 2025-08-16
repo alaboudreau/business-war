@@ -18,8 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return val;
         },
         getEvent(eventId) {
-            const event = gameEvents.find(e => e.id === eventId);
-            return event.description[this.currentLang];
+            return gameEvents.find(e => e.id === eventId);
         },
         updateUI() {
             if (!homeScreen.classList.contains('hidden')) {
@@ -199,8 +198,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function nextTurn() {
         if (gameState.turns <= 0) return;
-        const choiceEventTriggered = triggerEvents('turn_start');
-        if (choiceEventTriggered) { return; }
+        const eventTriggered = triggerEvents('turn_start');
+        if (eventTriggered) { return; }
 
         gameState.turns--;
         let totalRevenue = 0;
@@ -285,9 +284,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function travelTo(countryIndex) {
         if (countryIndex !== gameState.currentCountryIndex) {
             gameState.currentCountryIndex = countryIndex;
-            triggerEvents('travel');
-            nextTurn();
-            updateGameScreen();
+            const eventTriggered = triggerEvents('travel');
+            if (!eventTriggered) {
+                nextTurn();
+                updateGameScreen();
+            }
         }
     }
 
@@ -361,8 +362,8 @@ document.addEventListener('DOMContentLoaded', () => {
             gameState.reputation += 0.5;
             logEvent(languageManager.get('UI.buyLog').replace('{businessName}', business.name).replace('{price}', business.price.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })));
 
-            const choiceEventTriggered = triggerEvents('buy', business);
-            if (!choiceEventTriggered) {
+            const eventTriggered = triggerEvents('buy', business);
+            if (!eventTriggered) {
                  nextTurn();
                  updateGameScreen();
             }
@@ -373,31 +374,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function sellBusiness(businessId) {
         const business = gameState.allBusinesses.find(b => b.id === businessId);
-        if (business && business.owner === 'player') {
-            const profit = business.revenue - business.cost;
-            let salePriceMultiplier = 1.0;
+        if (!business || business.owner !== 'player') return;
 
-            const boycottEvent = gameEvents.find(e => e.id === 'SELL_EVENT_BOYCOTT');
-            if (boycottEvent && Math.random() < boycottEvent.probability) {
-                salePriceMultiplier = 0.75;
-                const description = languageManager.getEvent('SELL_EVENT_BOYCOTT').replace('{businessName}', business.name);
-                logEvent(`ÉVÉNEMENT: ${description}`);
-            }
+        business.salePriceModifier = 1.0;
+        business.saleFailed = false;
 
-            const salePrice = Math.floor(Math.max(0, profit * 12 * (1 + business.competitiveness)) * salePriceMultiplier);
-            gameState.money += salePrice;
-            business.owner = null;
-            business.price = Math.floor(salePrice * (Math.random() * 0.4 + 0.8));
-            gameState.reputation += 0.5;
+        const eventTriggered = triggerEvents('sell', business);
 
-            const choiceEventTriggered = triggerEvents('sell', business);
-            logEvent(languageManager.get('UI.sellLog').replace('{businessName}', business.name).replace('{salePrice}', salePrice.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })));
-
-            if (!choiceEventTriggered) {
-                nextTurn();
-                updateGameScreen();
-            }
+        if (!eventTriggered) {
+            completeSellBusiness(businessId);
         }
+    }
+
+    function completeSellBusiness(businessId) {
+        const business = gameState.allBusinesses.find(b => b.id === businessId);
+        if (!business) return;
+
+        if (business.saleFailed) {
+            logEvent({fr: `La vente de ${business.name} a échoué.`, en: `The sale of ${business.name} has failed.`});
+            updateGameScreen();
+            return;
+        }
+
+        const profit = business.revenue - business.cost;
+        const salePrice = Math.floor(Math.max(0, profit * 12 * (1 + business.competitiveness)) * business.salePriceModifier);
+
+        gameState.money += salePrice;
+        business.owner = null;
+        business.price = Math.floor(salePrice * (Math.random() * 0.4 + 0.8));
+        gameState.reputation += 0.5;
+
+        logEvent(languageManager.get('UI.sellLog').replace('{businessName}', business.name).replace('{salePrice}', salePrice.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })));
+
+        nextTurn();
+        updateGameScreen();
     }
 
     function triggerEvents(triggerType, target) {
@@ -406,13 +416,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (Math.random() < event.probability) {
                 if (event.isChoice) {
                     event.effect(gameState, target);
-                    return true;
                 } else {
                     event.effect(gameState, target);
-                    const description = languageManager.getEvent(event.id).replace('{businessName}', target.name);
-                    logEvent(`${languageManager.get('UI.eventPrefix')}: ${description}`);
+                    showEventModal(event, target);
                 }
-                return false;
+                return true;
             }
         }
         return false;
@@ -420,33 +428,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showChoiceModal(event, target) {
         const modal = document.getElementById('modal');
-        const description = languageManager.getEvent(event.id).replace('{businessName}', target ? target.name : '');
+        const story = event.story[languageManager.currentLang].replace('{businessName}', target ? target.name : '');
+        const description = event.description[languageManager.currentLang].replace('{businessName}', target ? target.name : '');
+        const acceptText = event.acceptText[languageManager.currentLang];
+        const declineText = event.declineText[languageManager.currentLang];
+
         const modalContent = `
             <div id="modal-content">
                 <h2>${languageManager.get('UI.opportunity')}</h2>
+                <p><em>${story}</em></p>
                 <p>${description}</p>
                 <div class="choice-actions">
-                    <button id="accept-choice-btn">${languageManager.get('UI.accept')}</button>
-                    <button id="decline-choice-btn">${languageManager.get('UI.decline')}</button>
+                    <button id="accept-choice-btn">${acceptText}</button>
+                    <button id="decline-choice-btn">${declineText}</button>
                 </div>
             </div>
         `;
         modal.innerHTML = modalContent;
         modal.style.display = 'flex';
 
-        document.getElementById('accept-choice-btn').addEventListener('click', () => {
-            const logMessage = event.resolve(gameState, target, true);
-            if(logMessage) logEvent(logMessage);
+        const handleChoice = (choice) => {
+            const logMessage = event.resolve(gameState, target, choice);
+            if (logMessage) logEvent(logMessage);
             modal.style.display = 'none';
-            if (event.id.includes('TURN_EVENT')) nextTurn();
-            updateGameScreen();
-        });
-        document.getElementById('decline-choice-btn').addEventListener('click', () => {
-            const logMessage = event.resolve(gameState, target, false);
-            if(logMessage) logEvent(logMessage);
+
+            if (event.trigger === 'sell') {
+                completeSellBusiness(target.id);
+            } else if (event.trigger === 'turn_start') {
+                nextTurn();
+            } else {
+                nextTurn();
+                updateGameScreen();
+            }
+        };
+
+        document.getElementById('accept-choice-btn').addEventListener('click', () => handleChoice(true));
+        document.getElementById('decline-choice-btn').addEventListener('click', () => handleChoice(false));
+    }
+
+    function showEventModal(event, target) {
+        const modal = document.getElementById('modal');
+        const story = event.story[languageManager.currentLang].replace('{businessName}', target ? target.name : '');
+        const description = event.description[languageManager.currentLang].replace('{businessName}', target ? target.name : '');
+
+        const modalContent = `
+            <div id="modal-content">
+                <h2>${languageManager.get('UI.eventPrefix')}</h2>
+                <p><em>${story}</em></p>
+                <p>${description}</p>
+                <button id="ok-event-btn">${languageManager.get('UI.ok')}</button>
+            </div>
+        `;
+        modal.innerHTML = modalContent;
+        modal.style.display = 'flex';
+
+        document.getElementById('ok-event-btn').addEventListener('click', () => {
             modal.style.display = 'none';
-            if (event.id.includes('TURN_EVENT')) nextTurn();
-            updateGameScreen();
+            if (event.trigger === 'turn_start') {
+                nextTurn();
+            } else {
+                updateGameScreen();
+            }
         });
     }
 

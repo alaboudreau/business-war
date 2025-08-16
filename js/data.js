@@ -80,6 +80,7 @@ const i18nData = {
             launchProductButton: "Lancer un produit",
             strategicPlanButton: "Planification Stratégique (Coût: 50k$)",
             close: "Fermer",
+            ok: "OK",
             investRDLog: "Vous avez investi en R&D pour {businessName}.",
             rationalizeLog: "Vous avez rationalisé les coûts pour {businessName}.",
             rdLevelTooLow: "Niveau de R&D trop faible pour lancer un produit!",
@@ -169,6 +170,7 @@ const i18nData = {
             launchProductButton: "Launch Product",
             strategicPlanButton: "Strategic Planning (Cost: 50k)",
             close: "Close",
+            ok: "OK",
             investRDLog: "You invested in R&D for {businessName}.",
             rationalizeLog: "You rationalized costs for {businessName}.",
             rdLevelTooLow: "R&D level too low to launch a product!",
@@ -183,9 +185,13 @@ const gameEvents = [
     {
         id: 'BUY_EVENT_FAKE_FINANCIALS',
         trigger: 'buy',
+        story: {
+            fr: "Vous venez de finaliser l'acquisition de {businessName} quand votre comptable vous appelle, l'air paniqué.",
+            en: "You've just finalized the acquisition of {businessName} when your accountant calls you, sounding panicked."
+        },
         description: {
-            fr: "Mauvaise nouvelle! Les résultats financiers de {businessName} étaient truqués. Ses revenus réels sont 50% plus bas.",
-            en: "Bad news! The financial results for {businessName} were faked. Its real revenue is 50% lower."
+            fr: "Mauvaise nouvelle! Les résultats financiers étaient truqués. Ses revenus réels sont 50% plus bas.",
+            en: "Bad news! The financial results were faked. Its real revenue is 50% lower."
         },
         probability: 0.1,
         effect: (gameState, business) => { business.revenue *= 0.5; }
@@ -193,9 +199,13 @@ const gameEvents = [
     {
         id: 'BUY_EVENT_OPTIMIZATION',
         trigger: 'buy',
+        story: {
+            fr: "En examinant les opérations de {businessName}, votre nouvelle équipe de direction a trouvé quelque chose d'incroyable.",
+            en: "While reviewing the operations at {businessName}, your new management team found something incredible."
+        },
         description: {
-            fr: "Bonne nouvelle! Vous avez trouvé une optimisation majeure chez {businessName}. Ses revenus augmentent de 25%.",
-            en: "Good news! You've found a major optimization at {businessName}. Its revenue increases by 25%."
+            fr: "Bonne nouvelle! Vous avez trouvé une optimisation majeure. Ses revenus augmentent de 25%.",
+            en: "Good news! You've found a major optimization. Its revenue increases by 25%."
         },
         probability: 0.1,
         effect: (gameState, business) => { business.revenue *= 1.25; }
@@ -203,12 +213,18 @@ const gameEvents = [
     {
         id: 'BUY_EVENT_MONEY_LAUNDERING',
         trigger: 'buy',
+        story: {
+            fr: "Un homme en costume coûteux vous approche dans un café. Il dit représenter des 'investisseurs silencieux' qui sont très intéressés par votre nouvelle acquisition, {businessName}.",
+            en: "A man in an expensive suit approaches you at a coffee shop. He says he represents 'silent investors' who are very interested in your new acquisition, {businessName}."
+        },
         description: {
-            fr: "Une offre douteuse vous est proposée pour {businessName}: blanchir de l'argent pour un groupe criminel. Acceptez-vous d'augmenter les revenus de 25% au prix d'un coup à votre réputation?",
-            en: "A shady offer is proposed for {businessName}: launder money for a criminal group. Do you accept to increase revenue by 25% at the cost of your reputation?"
+            fr: "Il vous propose de faire passer des fonds via l'entreprise pour augmenter artificiellement ses revenus de 25%. C'est illégal et nuira à votre réputation.",
+            en: "He proposes to run funds through the company to artificially boost its revenue by 25%. It's illegal and will hurt your reputation."
         },
         probability: 0.15,
         isChoice: true,
+        acceptText: { fr: "Accepter l'argent sale", en: "Accept the dirty money" },
+        declineText: { fr: "Refuser poliment", en: "Politely refuse" },
         effect: (gameState, business) => { showChoiceModal(gameEvents.find(e => e.id === 'BUY_EVENT_MONEY_LAUNDERING'), business); },
         resolve: (gameState, business, choice) => {
             if (choice) {
@@ -223,19 +239,44 @@ const gameEvents = [
     {
         id: 'SELL_EVENT_BOYCOTT',
         trigger: 'sell',
-        description: {
-            fr: "Un boycott des employés éclate lors de la vente de {businessName}, le prix de vente chute de 25%!",
-            en: "An employee boycott erupts during the sale of {businessName}, the selling price drops by 25%!"
+        story: {
+            fr: "Alors que vous finalisez la vente de {businessName}, des nouvelles de dernière minute éclatent.",
+            en: "As you are finalizing the sale of {businessName}, breaking news erupts."
         },
-        probability: 0.1,
-        effect: (gameState, business) => {}
+        description: {
+            fr: "Les employés, mécontents de la vente, organisent un boycott! L'acheteur menace de se retirer à moins que vous ne baissiez le prix.",
+            en: "The employees, unhappy with the sale, are staging a boycott! The buyer is threatening to pull out unless you lower the price."
+        },
+        probability: 0.15,
+        isChoice: true,
+        acceptText: { fr: "Céder et baisser le prix", en: "Give in and lower the price" },
+        declineText: { fr: "Tenir bon (risque d'échec)", en: "Hold firm (risk failure)" },
+        effect: (gameState, business) => { showChoiceModal(gameEvents.find(e => e.id === 'SELL_EVENT_BOYCOTT'), business); },
+        resolve: (gameState, business, choice) => {
+            if (choice) {
+                // This is a flag the sellBusiness function will check
+                business.salePriceModifier = 0.75;
+                return {fr: "Vous cédez à la pression. Le prix de vente est réduit.", en: "You give in to the pressure. The sale price is reduced."};
+            } else {
+                if (Math.random() < 0.5) { // 50% chance the sale fails
+                    business.saleFailed = true;
+                    return {fr: "Votre fermeté a fait capoter la vente!", en: "Your firmness caused the sale to fail!"};
+                } else {
+                    return {fr: "Votre bluff a fonctionné! La vente se poursuit au prix initial.", en: "Your bluff worked! The sale proceeds at the original price."};
+                }
+            }
+        }
     },
     {
         id: 'TRAVEL_EVENT_LOSE_TURN',
         trigger: 'travel',
+        story: {
+            fr: "Votre voyage est interrompu par un problème inattendu.",
+            en: "Your journey is interrupted by an unexpected problem."
+        },
         description: {
-            fr: "Votre vol a été retardé, vous perdez un jour supplémentaire.",
-            en: "Your flight was delayed, you lose an extra day."
+            fr: "Votre vol a été annulé à cause d'une grève des contrôleurs aériens! Vous perdez un jour à trouver un autre vol.",
+            en: "Your flight was canceled due to an air traffic controller strike! You lose a day finding another flight."
         },
         probability: 0.05,
         effect: (gameState) => { gameState.turns--; }
@@ -243,12 +284,18 @@ const gameEvents = [
     {
         id: 'TURN_EVENT_GOV_CONTRACT',
         trigger: 'turn_start',
+        story: {
+            fr: "Un contact au gouvernement vous appelle avec une 'opportunité' spéciale.",
+            en: "A government contact calls you with a special 'opportunity'."
+        },
         description: {
-            fr: "Une opportunité de contrat gouvernemental truqué se présente. Revenus +500% pour un tour, mais -5 de réputation. Acceptez-vous?",
-            en: "An opportunity for a rigged government contract appears. Revenue +500% for one turn, but -5 reputation. Do you accept?"
+            fr: "Il y a un contrat public lucratif. Votre contact peut vous le garantir en échange d'un petit pot-de-vin qui entachera votre réputation. Le contrat donnera un bonus de revenu équivalent à 500% des revenus d'une de vos entreprises pour ce tour.",
+            en: "There's a lucrative public contract available. Your contact can guarantee it for you in exchange for a small bribe that will stain your reputation. The contract will provide a revenue bonus equal to 500% of one of your businesses' revenue for this turn."
         },
         probability: 0.05,
         isChoice: true,
+        acceptText: { fr: "Accepter le contrat", en: "Accept the contract" },
+        declineText: { fr: "Refuser l'offre", en: "Refuse the offer" },
         effect: (gameState) => { showChoiceModal(gameEvents.find(e => e.id === 'TURN_EVENT_GOV_CONTRACT')); },
         resolve: (gameState, target, choice) => {
             if (choice) {

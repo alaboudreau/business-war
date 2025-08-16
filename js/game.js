@@ -79,25 +79,44 @@ document.addEventListener('DOMContentLoaded', () => {
         const types = Object.keys(i18nData[lang].BUSINESS_TYPES);
 
         for (let i = 0; i < i18nData[lang].COUNTRIES.length; i++) {
+            const country = i18nData[lang].COUNTRIES[i];
+            const modifiers = country.modifiers || {};
+
             for (let j = 0; j < numPerCountry; j++) {
                 const typeKey = types[Math.floor(Math.random() * types.length)];
                 const typeName = i18nData[lang].BUSINESS_TYPES[typeKey];
                 const name = i18nData[lang].BUSINESS_NAMES[typeKey][Math.floor(Math.random() * i18nData[lang].BUSINESS_NAMES[typeKey].length)];
 
-                const revenue = Math.floor(Math.random() * 50000) + 5000;
-                const cost = revenue * (Math.random() * 0.5 + 0.2);
+                let revenue = Math.floor(Math.random() * 50000) + 5000;
+                let cost = revenue * (Math.random() * 0.5 + 0.2);
+                let competitiveness = Math.random();
+
+                // Apply modifiers
+                if (typeKey === 'RETAIL' && modifiers.retailRevenue) revenue *= modifiers.retailRevenue;
+                if (typeKey === 'MANUFACTURING' && modifiers.manufacturingCost) cost *= modifiers.manufacturingCost;
+                if (typeKey === 'WHOLESALE' && modifiers.wholesaleCost) cost *= modifiers.wholesaleCost;
+                if (typeKey === 'RESOURCE' && modifiers.resourceCost) cost *= modifiers.resourceCost;
+                if (typeKey === 'MANUFACTURING' && modifiers.manufacturingQuality) competitiveness *= modifiers.manufacturingQuality;
+
+
                 const profit = revenue - cost;
                 const risk = Math.random();
-                const competitiveness = Math.random();
                 const price = Math.max(10000, Math.floor(profit * 12 * (1 + competitiveness) * (1 - risk)));
 
                 businesses.push({
                     id: nextBusinessId++,
                     name: `${name} #${nextBusinessId-1}`,
                     type: typeName,
+                    typeKey: typeKey, // Store key for easier lookup
                     countryIndex: i,
                     owner: null,
-                    revenue, cost, risk, competitiveness,
+                    level: 1,
+                    marketing: { active: false, turnsRemaining: 0 },
+                    temporaryModifier: { active: false, turnsRemaining: 0, revenueMultiplier: 1.0, costMultiplier: 1.0 },
+                    revenue: Math.floor(revenue),
+                    cost: Math.floor(cost),
+                    risk,
+                    competitiveness,
                     rdLevel: Math.random(),
                     price
                 });
@@ -202,12 +221,49 @@ document.addEventListener('DOMContentLoaded', () => {
         const eventTriggered = triggerEvents('turn_start');
         if (eventTriggered) { return; }
 
+        // Global Events
+        if (Math.random() < 0.1) { // 10% chance of a global event
+            const globalEvent = globalEvents[Math.floor(Math.random() * globalEvents.length)];
+            logEvent(`GLOBAL EVENT: ${globalEvent.description[languageManager.currentLang]}`);
+            gameState.allBusinesses.forEach(b => {
+                if (globalEvent.businessType === 'all' || b.typeKey === globalEvent.businessType) {
+                    b.temporaryModifier.active = true;
+                    b.temporaryModifier.turnsRemaining = globalEvent.duration;
+                    b.temporaryModifier.revenueMultiplier = globalEvent.revenueMultiplier || 1.0;
+                    b.temporaryModifier.costMultiplier = globalEvent.costMultiplier || 1.0;
+                }
+            });
+        }
+
         gameState.turns--;
         let totalRevenue = 0;
         let totalCost = 0;
         gameState.allBusinesses.filter(b => b.owner === 'player').forEach(b => {
-            totalRevenue += b.revenue;
-            totalCost += b.cost;
+            let currentRevenue = b.revenue;
+            let currentCost = b.cost;
+
+            // Apply marketing effects
+            if (b.marketing.active) {
+                currentRevenue *= 1.5;
+                b.marketing.turnsRemaining--;
+                if (b.marketing.turnsRemaining <= 0) {
+                    b.marketing.active = false;
+                    logEvent({fr: `La campagne marketing pour ${b.name} est terminée.`, en: `The marketing campaign for ${b.name} has ended.`});
+                }
+            }
+
+            // Apply global event effects
+            if (b.temporaryModifier.active) {
+                currentRevenue *= b.temporaryModifier.revenueMultiplier;
+                currentCost *= b.temporaryModifier.costMultiplier;
+                b.temporaryModifier.turnsRemaining--;
+                if (b.temporaryModifier.turnsRemaining <= 0) {
+                    b.temporaryModifier.active = false;
+                }
+            }
+
+            totalRevenue += currentRevenue;
+            totalCost += currentCost;
         });
         gameState.money += totalRevenue - totalCost;
         const interest = gameState.debt * 0.06;
@@ -317,6 +373,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showBankModal() {
         const modal = document.getElementById('modal');
+        const canBorrow = !gameState.hasTakenExtraLoan && gameState.reputation > -10;
+        const borrowButtonTitle = gameState.reputation <= -10 ? languageManager.get('UI.badReputation') : '';
+
         const modalContent = `
             <div id="modal-content">
                 <h2>${languageManager.get('UI.bankTitle')}</h2>
@@ -326,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button id="repay-btn">${languageManager.get('UI.repay')}</button>
                 </div>
                 <div class="bank-action">
-                     <button id="borrow-btn" ${gameState.hasTakenExtraLoan ? 'disabled' : ''}>${languageManager.get('UI.borrowButton')}</button>
+                     <button id="borrow-btn" ${!canBorrow ? 'disabled' : ''} title="${borrowButtonTitle}">${languageManager.get('UI.borrowButton')}</button>
                 </div>
                 <button id="close-modal-btn">${languageManager.get('UI.leaveBank')}</button>
             </div>
@@ -340,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
             repayDebt(amount);
             modal.style.display = 'none';
         });
-        if (!gameState.hasTakenExtraLoan) {
+        if (canBorrow) {
             document.getElementById('borrow-btn').addEventListener('click', () => {
                 borrowMore();
                 modal.style.display = 'none';
@@ -434,7 +493,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function triggerEvents(triggerType, target) {
-        const potentialEvents = gameEvents.filter(e => e.trigger === triggerType);
+        const potentialEvents = gameEvents.filter(e => {
+            if (e.trigger !== triggerType) return false;
+            if (e.minReputation !== undefined && gameState.reputation < e.minReputation) return false;
+            if (e.maxReputation !== undefined && gameState.reputation > e.maxReputation) return false;
+            return true;
+        });
+
         for (const event of potentialEvents) {
             if (Math.random() < event.probability) {
                 if (event.isChoice) {
@@ -520,9 +585,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!business) return;
 
         const modal = document.getElementById('modal');
+        const upgradeCost = business.price * 2 * business.level;
         const modalContent = `
             <div id="modal-content">
-                <h2>${languageManager.get('UI.manageTitle')}: ${business.name}</h2>
+                <h2>${languageManager.get('UI.manageTitle')}: ${business.name} (Lvl ${business.level})</h2>
                 <div class="business-stats-grid">
                     <span>${languageManager.get('UI.revenue')}/tour:</span><span>${business.revenue.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
                     <span>${languageManager.get('UI.costs')}/tour:</span><span>${business.cost.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
@@ -536,6 +602,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button id="rationalize-btn">${languageManager.get('UI.rationalizeButton')}</button>
                     <button id="launch-product-btn">${languageManager.get('UI.launchProductButton')}</button>
                     <button id="strategic-plan-btn">${languageManager.get('UI.strategicPlanButton')}</button>
+                    <button id="upgrade-btn">${languageManager.get('UI.upgradeButton').replace('{cost}', upgradeCost.toLocaleString(languageManager.currentLang, {style: 'currency', currency: 'USD'}))}</button>
+                    <button id="marketing-btn" ${business.marketing.active ? 'disabled' : ''}>${languageManager.get('UI.marketingButton')}</button>
                 </div>
                 <button id="close-modal-btn">${languageManager.get('UI.close')}</button>
             </div>
@@ -548,6 +616,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('rationalize-btn').addEventListener('click', () => rationalizeCosts(businessId));
         document.getElementById('launch-product-btn').addEventListener('click', () => launchProduct(businessId));
         document.getElementById('strategic-plan-btn').addEventListener('click', () => strategicPlanning(businessId));
+        document.getElementById('upgrade-btn').addEventListener('click', () => upgradeBusiness(businessId));
+        if (!business.marketing.active) {
+            document.getElementById('marketing-btn').addEventListener('click', () => startMarketingCampaign(businessId));
+        }
     }
 
     function investInRD(businessId) {
@@ -555,10 +627,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const cost = 25000;
         if (gameState.money < cost) { alert(languageManager.get('UI.notEnoughMoney')); return; }
 
+        const country = i18nData[languageManager.currentLang].COUNTRIES[gameState.currentCountryIndex];
+        const modifiers = country.modifiers || {};
+        const rdEffectiveness = modifiers.rdEffectiveness || 1.0;
+
         gameState.money -= cost;
-        business.rdLevel = Math.min(1, business.rdLevel + 0.1);
-        business.competitiveness = Math.min(1, business.competitiveness + 0.05);
+        business.rdLevel = Math.min(1, business.rdLevel + (0.1 * rdEffectiveness));
+        business.competitiveness = Math.min(1, business.competitiveness + (0.05 * rdEffectiveness));
         logEvent(languageManager.get('UI.investRDLog').replace('{businessName}', business.name));
+        nextTurn();
+        updateGameScreen();
+        document.getElementById('modal').style.display = 'none';
+    }
+
+    function upgradeBusiness(businessId) {
+        const business = gameState.allBusinesses.find(b => b.id === businessId);
+        const cost = business.price * 2 * business.level;
+        if (gameState.money < cost) { alert(languageManager.get('UI.notEnoughMoney')); return; }
+
+        gameState.money -= cost;
+        business.level++;
+        business.revenue *= 1.5;
+        business.cost *= 1.4; // Costs increase slightly less than revenue
+        business.price = Math.floor(business.price * 2.5); // New base price for future upgrades
+
+        logEvent(languageManager.get('UI.upgradeLog').replace('{businessName}', business.name).replace('{level}', business.level));
         nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';
@@ -603,6 +696,21 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             logEvent(languageManager.get('UI.strategicPlanFailLog').replace('{businessName}', business.name));
         }
+        nextTurn();
+        updateGameScreen();
+        document.getElementById('modal').style.display = 'none';
+    }
+
+    function startMarketingCampaign(businessId) {
+        const business = gameState.allBusinesses.find(b => b.id === businessId);
+        const cost = business.price * 0.5; // Marketing cost is 50% of business price
+        if (gameState.money < cost) { alert(languageManager.get('UI.notEnoughMoney')); return; }
+
+        gameState.money -= cost;
+        business.marketing.active = true;
+        business.marketing.turnsRemaining = 5; // Campaign lasts for 5 turns
+
+        logEvent(languageManager.get('UI.marketingLog').replace('{businessName}', business.name));
         nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';

@@ -13,8 +13,13 @@ const i18nData = {
             RETAIL: ["Chaîne de supermarchés", "Boutique de luxe", "Magasin d'électronique", "Restaurant fast-food"]
         },
         COUNTRIES: [
-            { name: "USA", bank: true }, { name: "Chine" }, { name: "Allemagne" },
-            { name: "Japon" }, { name: "France" }, { name: "Canada" }, { name: "Royaume-Uni" }
+            { name: "USA", bank: true, modifiers: { retailRevenue: 1.2, rdEffectiveness: 1.1 } },
+            { name: "Chine", modifiers: { manufacturingCost: 0.8, wholesaleCost: 0.9 } },
+            { name: "Allemagne", modifiers: { manufacturingQuality: 1.2, rdEffectiveness: 1.2 } },
+            { name: "Japon", modifiers: { rdEffectiveness: 1.3, retailRevenue: 1.1 } },
+            { name: "France", modifiers: { retailRevenue: 1.3 } },
+            { name: "Canada", modifiers: { resourceCost: 0.9 } },
+            { name: "Royaume-Uni", bank: true, modifiers: { financialCost: 0.9 } }
         ],
         UI: {
             newGame: "Nouvelle partie",
@@ -79,9 +84,13 @@ const i18nData = {
             rationalizeButton: "Rationaliser (Coût: 10k$)",
             launchProductButton: "Lancer un produit",
             strategicPlanButton: "Planification Stratégique (Coût: 50k$)",
+            upgradeButton: "Améliorer (Coût: {cost})",
+            marketingButton: "Campagne Marketing (Coût: 50% du prix)",
             close: "Fermer",
             ok: "OK",
             investRDLog: "Vous avez investi en R&D pour {businessName}.",
+            upgradeLog: "{businessName} a été amélioré au niveau {level}!",
+            marketingLog: "Campagne marketing lancée pour {businessName}.",
             rationalizeLog: "Vous avez rationalisé les coûts pour {businessName}.",
             rdLevelTooLow: "Niveau de R&D trop faible pour lancer un produit!",
             launchProductLog: "Nouveau lancement de produit réussi pour {businessName}!",
@@ -94,7 +103,8 @@ const i18nData = {
             leaderboardTitle: "Tableau des scores",
             leaderboardRank: "Rang",
             leaderboardScore: "Score",
-            leaderboardStats: "Stats"
+            leaderboardStats: "Stats",
+            badReputation: "Votre réputation est trop basse pour un nouvel emprunt."
         }
     },
     en: {
@@ -111,8 +121,13 @@ const i18nData = {
             RETAIL: ["Supermarket Chain", "Luxury Boutique", "Electronics Store", "Fast-Food Restaurant"]
         },
         COUNTRIES: [
-            { name: "USA", bank: true }, { name: "China" }, { name: "Germany" },
-            { name: "Japan" }, { name: "France" }, { name: "Canada" }, { name: "United Kingdom" }
+            { name: "USA", bank: true, modifiers: { retailRevenue: 1.2, rdEffectiveness: 1.1 } },
+            { name: "China", modifiers: { manufacturingCost: 0.8, wholesaleCost: 0.9 } },
+            { name: "Germany", modifiers: { manufacturingQuality: 1.2, rdEffectiveness: 1.2 } },
+            { name: "Japan", modifiers: { rdEffectiveness: 1.3, retailRevenue: 1.1 } },
+            { name: "France", modifiers: { retailRevenue: 1.3 } },
+            { name: "Canada", modifiers: { resourceCost: 0.9 } },
+            { name: "United Kingdom", bank: true, modifiers: { financialCost: 0.9 } }
         ],
         UI: {
             newGame: "New Game",
@@ -177,9 +192,13 @@ const i18nData = {
             rationalizeButton: "Rationalize (Cost: 10k)",
             launchProductButton: "Launch Product",
             strategicPlanButton: "Strategic Planning (Cost: 50k)",
+            upgradeButton: "Upgrade (Cost: {cost})",
+            marketingButton: "Marketing Campaign (Cost: 50% of price)",
             close: "Close",
             ok: "OK",
             investRDLog: "You invested in R&D for {businessName}.",
+            upgradeLog: "{businessName} has been upgraded to level {level}!",
+            marketingLog: "Marketing campaign launched for {businessName}.",
             rationalizeLog: "You rationalized costs for {businessName}.",
             rdLevelTooLow: "R&D level too low to launch a product!",
             launchProductLog: "Successful new product launch for {businessName}!",
@@ -192,7 +211,8 @@ const i18nData = {
             leaderboardTitle: "Leaderboard",
             leaderboardRank: "Rank",
             leaderboardScore: "Score",
-            leaderboardStats: "Stats"
+            leaderboardStats: "Stats",
+            badReputation: "Your reputation is too low for a new loan."
         }
     }
 };
@@ -327,6 +347,55 @@ const gameEvents = [
                 return {fr: "Vous avez refusé le contrat gouvernemental douteux.", en: "You refused the shady government contract."};
             }
             return null;
+        }
+    },
+    {
+        id: 'TURN_EVENT_GOOD_REP',
+        trigger: 'turn_start',
+        story: {
+            fr: "Votre excellente réputation vous précède.",
+            en: "Your excellent reputation precedes you."
+        },
+        description: {
+            fr: "Un philanthrope local, impressionné par votre éthique des affaires, a fait un don de 50 000$ à votre conglomérat.",
+            en: "A local philanthropist, impressed by your business ethics, has donated $50,000 to your conglomerate."
+        },
+        probability: 0.1,
+        minReputation: 10, // Requires high reputation
+        effect: (gameState) => { gameState.money += 50000; }
+    }
+];
+
+const globalEvents = [
+    {
+        id: 'GLOBAL_TECH_BOOM',
+        businessType: 'RETAIL',
+        revenueMultiplier: 1.5,
+        duration: 5,
+        description: {
+            fr: "Un nouveau gadget indispensable vient de sortir! Les revenus des détaillants en électronique explosent.",
+            en: "A new must-have gadget has been released! Revenue for electronics retailers is booming."
+        }
+    },
+    {
+        id: 'GLOBAL_RESOURCE_SHORTAGE',
+        businessType: 'RESOURCE',
+        revenueMultiplier: 2.0,
+        costMultiplier: 1.5,
+        duration: 4,
+        description: {
+            fr: "Une pénurie mondiale de matières premières fait grimper les prix. Les revenus et les coûts des entreprises de ressources augmentent.",
+            en: "A global raw material shortage is driving up prices. Revenue and costs for resource businesses are increasing."
+        }
+    },
+    {
+        id: 'GLOBAL_RECESSION',
+        businessType: 'all',
+        revenueMultiplier: 0.7,
+        duration: 6,
+        description: {
+            fr: "Une récession mondiale frappe durement les consommateurs. Les revenus de toutes les entreprises chutent.",
+            en: "A global recession is hitting consumers hard. Revenues for all businesses are dropping."
         }
     }
 ];

@@ -24,6 +24,19 @@ body {
     text-align: center;
 }
 
+#lang-switcher {
+    margin-bottom: 20px;
+}
+
+#lang-switcher button {
+    background: none;
+    border: none;
+    color: #007bff;
+    cursor: pointer;
+    font-size: 1em;
+    padding: 0 5px;
+}
+
 h1 {
     color: #333;
 }

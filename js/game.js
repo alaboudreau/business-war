@@ -1,29 +1,94 @@
 document.addEventListener('DOMContentLoaded', () => {
     const homeScreen = document.getElementById('home-screen');
     const gameScreen = document.getElementById('game-screen');
-    const newGameButtons = document.querySelectorAll('.new-game-btn');
+
+    const languageManager = {
+        currentLang: 'fr',
+        setLang(lang) {
+            this.currentLang = lang;
+            this.updateUI();
+        },
+        get(key) {
+            const keys = key.split('.');
+            let val = i18nData[this.currentLang];
+            for (const k of keys) {
+                val = val[k];
+                if (val === undefined) return key;
+            }
+            return val;
+        },
+        getEvent(eventId) {
+            const event = gameEvents.find(e => e.id === eventId);
+            return event.description[this.currentLang];
+        },
+        updateUI() {
+            if (!homeScreen.classList.contains('hidden')) {
+                renderHomeScreen();
+            }
+            if (!gameScreen.classList.contains('hidden')) {
+                updateGameScreen();
+            }
+        }
+    };
+
+    function logEvent(message) {
+        if (typeof message === 'string') {
+            gameState.log.unshift(message);
+        } else {
+            gameState.log.unshift(message[languageManager.currentLang]);
+        }
+        if(gameState.log.length > 5) gameState.log.pop();
+    }
 
     let gameState = {};
-
     let nextBusinessId = 1;
 
-    function generateBusinesses(numPerCountry) {
-        const businesses = [];
-        const types = Object.keys(BUSINESS_TYPES);
+    function renderHomeScreen() {
+        homeScreen.innerHTML = `
+            <h1>Business War</h1>
+            <div id="lang-switcher">
+                <button id="lang-fr" class="${languageManager.currentLang === 'fr' ? 'active' : ''}">FR</button> |
+                <button id="lang-en" class="${languageManager.currentLang === 'en' ? 'active' : ''}">EN</button>
+            </div>
+            <div id="new-game-options">
+                <h2>${languageManager.get('UI.newGame')}</h2>
+                <button class="new-game-btn" data-turns="10">${languageManager.get('UI.shortGame')}</button>
+                <button class="new-game-btn" data-turns="30">${languageManager.get('UI.normalGame')}</button>
+                <button class="new-game-btn" data-turns="60">${languageManager.get('UI.longGame')}</button>
+            </div>
+            <div id="other-options">
+                <button disabled>${languageManager.get('UI.scoreboard')}</button>
+                <button disabled>${languageManager.get('UI.credits')}</button>
+            </div>
+        `;
 
-        for (let i = 0; i < countries.length; i++) {
+        document.getElementById('lang-fr').addEventListener('click', () => languageManager.setLang('fr'));
+        document.getElementById('lang-en').addEventListener('click', () => languageManager.setLang('en'));
+
+        document.querySelectorAll('.new-game-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const turns = parseInt(e.target.dataset.turns, 10);
+                startGame(turns);
+            });
+        });
+    }
+
+    function generateBusinesses(numPerCountry) {
+        const lang = languageManager.currentLang;
+        const businesses = [];
+        const types = Object.keys(i18nData[lang].BUSINESS_TYPES);
+
+        for (let i = 0; i < i18nData[lang].COUNTRIES.length; i++) {
             for (let j = 0; j < numPerCountry; j++) {
                 const typeKey = types[Math.floor(Math.random() * types.length)];
-                const typeName = BUSINESS_TYPES[typeKey];
-                const name = BUSINESS_NAMES[typeKey][Math.floor(Math.random() * BUSINESS_NAMES[typeKey].length)];
+                const typeName = i18nData[lang].BUSINESS_TYPES[typeKey];
+                const name = i18nData[lang].BUSINESS_NAMES[typeKey][Math.floor(Math.random() * i18nData[lang].BUSINESS_NAMES[typeKey].length)];
 
-                const revenue = Math.floor(Math.random() * 50000) + 5000; // 5k to 55k
-                const cost = revenue * (Math.random() * 0.5 + 0.2); // cost is 20-70% of revenue
+                const revenue = Math.floor(Math.random() * 50000) + 5000;
+                const cost = revenue * (Math.random() * 0.5 + 0.2);
                 const profit = revenue - cost;
-                const risk = Math.random(); // 0 to 1
+                const risk = Math.random();
                 const competitiveness = Math.random();
-
-                // Price is based on 12 turns of profit, adjusted by competitiveness and risk
                 const price = Math.max(10000, Math.floor(profit * 12 * (1 + competitiveness) * (1 - risk)));
 
                 businesses.push({
@@ -31,12 +96,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     name: `${name} #${nextBusinessId-1}`,
                     type: typeName,
                     countryIndex: i,
-                    owner: null, // null means it's on the market
-                    revenue,
-                    cost,
-                    risk, // hidden
-                    competitiveness, // hidden
-                    rdLevel: Math.random(), // hidden
+                    owner: null,
+                    revenue, cost, risk, competitiveness,
+                    rdLevel: Math.random(),
                     price
                 });
             }
@@ -46,16 +108,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initializeGameState(turns) {
         nextBusinessId = 1;
-        const allBusinesses = generateBusinesses(3); // 3 businesses per country
-
         gameState = {
-            turns: turns,
-            maxTurns: turns,
+            turns, maxTurns: turns,
             reputation: 0,
             money: 150000,
             debt: 150000,
-            allBusinesses: allBusinesses, // All businesses in the game world
-            currentCountryIndex: 0, // Start in the USA
+            allBusinesses: generateBusinesses(3),
+            currentCountryIndex: 0,
             log: [],
             hasTakenExtraLoan: false
         };
@@ -69,72 +128,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateGameScreen() {
-        const currentCountry = countries[gameState.currentCountryIndex];
+        const lang = languageManager.currentLang;
+        const currentCountry = i18nData[lang].COUNTRIES[gameState.currentCountryIndex];
         const ownedBusinesses = gameState.allBusinesses.filter(b => b.owner === 'player' && b.countryIndex === gameState.currentCountryIndex);
         const marketBusinesses = gameState.allBusinesses.filter(b => b.owner === null && b.countryIndex === gameState.currentCountryIndex);
 
         gameScreen.innerHTML = `
             <div>
                 <h2>${currentCountry.name}</h2>
-                <p>Jour: ${gameState.maxTurns - gameState.turns + 1} / ${gameState.maxTurns}</p>
+                <p>${languageManager.get('UI.day')}: ${gameState.maxTurns - gameState.turns + 1} / ${gameState.maxTurns}</p>
             </div>
             <div id="player-stats">
-                <h3>Stats</h3>
-                <p>Argent: ${gameState.money.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}</p>
-                <p>Dette: ${gameState.debt.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}</p>
-                <p>Réputation: ${gameState.reputation}</p>
-                <p>Entreprises: ${gameState.allBusinesses.filter(b => b.owner === 'player').length}</p>
+                <h3>${languageManager.get('UI.stats')}</h3>
+                <p>${languageManager.get('UI.money')}: ${gameState.money.toLocaleString(lang, { style: 'currency', currency: 'USD' })}</p>
+                <p>${languageManager.get('UI.debt')}: ${gameState.debt.toLocaleString(lang, { style: 'currency', currency: 'USD' })}</p>
+                <p>${languageManager.get('UI.reputation')}: ${gameState.reputation}</p>
+                <p>${languageManager.get('UI.businesses')}: ${gameState.allBusinesses.filter(b => b.owner === 'player').length}</p>
             </div>
             <div id="actions">
-                <h3>Actions</h3>
-                <button id="travel-btn">Voyager</button>
-                ${currentCountry.bank ? '<button id="bank-btn">Visiter la banque</button>' : ''}
+                <h3>${languageManager.get('UI.actions')}</h3>
+                <button id="travel-btn">${languageManager.get('UI.travel')}</button>
+                ${currentCountry.bank ? `<button id="bank-btn">${languageManager.get('UI.visitBank')}</button>` : ''}
             </div>
             <div id="businesses-market">
-                <h3>Marché local</h3>
+                <h3>${languageManager.get('UI.localMarket')}</h3>
                 ${marketBusinesses.length > 0 ? marketBusinesses.map(b => `
                     <div class="business-card">
                         <h4>${b.name} (${b.type})</h4>
-                        <p>Revenus estimés: ${b.revenue.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}/tour</p>
-                        <p>Prix: ${b.price.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}</p>
-                        <button class="buy-btn" data-id="${b.id}">Acheter</button>
+                        <p>${languageManager.get('UI.estimatedRevenue')}: ${b.revenue.toLocaleString(lang, { style: 'currency', currency: 'USD' })}/tour</p>
+                        <p>${languageManager.get('UI.price')}: ${b.price.toLocaleString(lang, { style: 'currency', currency: 'USD' })}</p>
+                        <button class="buy-btn" data-id="${b.id}">${languageManager.get('UI.buy')}</button>
                     </div>
-                `).join('') : '<p>Aucune entreprise à vendre.</p>'}
+                `).join('') : `<p>${languageManager.get('UI.noBusinessForSale')}</p>`}
             </div>
             <div id="my-businesses">
-                <h3>Mes entreprises dans ce pays</h3>
+                <h3>${languageManager.get('UI.myBusinessesInCountry')}</h3>
                  ${ownedBusinesses.length > 0 ? ownedBusinesses.map(b => `
                     <div class="business-card">
                         <h4>${b.name} (${b.type})</h4>
-                        <p>Revenus: ${b.revenue.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}/tour</p>
-                        <p>Coûts: ${b.cost.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}/tour</p>
-                        <button class="sell-btn" data-id="${b.id}">Vendre</button>
-                        <button class="manage-btn" data-id="${b.id}">Gérer</button>
+                        <p>${languageManager.get('UI.revenue')}: ${b.revenue.toLocaleString(lang, { style: 'currency', currency: 'USD' })}/tour</p>
+                        <p>${languageManager.get('UI.costs')}: ${b.cost.toLocaleString(lang, { style: 'currency', currency: 'USD' })}/tour</p>
+                        <button class="sell-btn" data-id="${b.id}">${languageManager.get('UI.sell')}</button>
+                        <button class="manage-btn" data-id="${b.id}">${languageManager.get('UI.manage')}</button>
                     </div>
-                `).join('') : '<p>Aucune entreprise possédée ici.</p>'}
+                `).join('') : `<p>${languageManager.get('UI.noBusinessOwned')}</p>`}
             </div>
             <div id="log-container">
-                <h3>Journal</h3>
+                <h3>${languageManager.get('UI.journal')}</h3>
                 ${gameState.log.map(msg => `<p>${msg}</p>`).join('')}
             </div>
         `;
 
-        // Add event listeners for new buttons
+        // Add event listeners
         if (document.getElementById('travel-btn')) {
             document.getElementById('travel-btn').addEventListener('click', showTravelModal);
         }
-
-        document.querySelectorAll('.buy-btn').forEach(button => {
-            button.addEventListener('click', (e) => buyBusiness(parseInt(e.target.dataset.id, 10)));
-        });
-
-        document.querySelectorAll('.sell-btn').forEach(button => {
-            button.addEventListener('click', (e) => sellBusiness(parseInt(e.target.dataset.id, 10)));
-        });
-
         if (document.getElementById('bank-btn')) {
             document.getElementById('bank-btn').addEventListener('click', showBankModal);
         }
+        document.querySelectorAll('.buy-btn').forEach(button => {
+            button.addEventListener('click', (e) => buyBusiness(parseInt(e.target.dataset.id, 10)));
+        });
+        document.querySelectorAll('.sell-btn').forEach(button => {
+            button.addEventListener('click', (e) => sellBusiness(parseInt(e.target.dataset.id, 10)));
+        });
         document.querySelectorAll('.manage-btn').forEach(button => {
             button.addEventListener('click', (e) => showManagementModal(parseInt(e.target.dataset.id, 10)));
         });
@@ -142,48 +199,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function nextTurn() {
         if (gameState.turns <= 0) return;
-
-        // Trigger turn start events before anything else
         const choiceEventTriggered = triggerEvents('turn_start');
-        if (choiceEventTriggered) {
-            // A choice modal is open, so we pause execution here.
-            // The modal's resolve function will call nextTurn again.
-            return;
-        }
+        if (choiceEventTriggered) { return; }
 
         gameState.turns--;
-        let turnLog = {
-            turn: gameState.maxTurns - gameState.turns,
-            income: 0,
-            expenses: 0,
-            events: []
-        };
-
-        // 1. Passive Income
-        const ownedBusinesses = gameState.allBusinesses.filter(b => b.owner === 'player');
         let totalRevenue = 0;
         let totalCost = 0;
-        ownedBusinesses.forEach(b => {
+        gameState.allBusinesses.filter(b => b.owner === 'player').forEach(b => {
             totalRevenue += b.revenue;
             totalCost += b.cost;
         });
         gameState.money += totalRevenue - totalCost;
-        turnLog.income = totalRevenue - totalCost;
-
-
-        // 2. Debt Interest
         const interest = gameState.debt * 0.06;
         gameState.money -= interest;
-        turnLog.expenses = interest;
 
-        gameState.log.unshift(`Jour ${turnLog.turn}: Revenus: ${turnLog.income.toFixed(0)}$. Dépenses (intérêts): ${turnLog.expenses.toFixed(0)}$.`);
-        if(gameState.log.length > 5) gameState.log.pop(); // Keep log short
+        const turnInfo = languageManager.get('UI.turnInfo')
+            .replace('{turn}', gameState.maxTurns - gameState.turns)
+            .replace('{income}', (totalRevenue - totalCost).toFixed(0))
+            .replace('{expenses}', interest.toFixed(0));
+        logEvent(turnInfo);
 
-        // 3. Check for game over
         if (gameState.turns === 0) {
-            gameOver("Le temps est écoulé!");
+            gameOver(languageManager.get('UI.gameOverTime'));
         } else if (gameState.reputation <= -20) {
-            gameOver("Votre réputation est si basse que vous avez été arrêté!");
+            gameOver(languageManager.get('UI.gameOverReputation'));
         }
     }
 
@@ -191,51 +230,44 @@ document.addEventListener('DOMContentLoaded', () => {
         const ownedBusinesses = gameState.allBusinesses.filter(b => b.owner === 'player');
         const totalBusinessValue = ownedBusinesses.reduce((sum, b) => {
             const profit = b.revenue - b.cost;
-            const value = Math.floor(Math.max(0, profit * 12 * (1 + b.competitiveness)));
-            return sum + value;
+            return sum + Math.floor(Math.max(0, profit * 12 * (1 + b.competitiveness)));
         }, 0);
-
         const finalScore = gameState.money - gameState.debt + totalBusinessValue;
 
         gameScreen.innerHTML = `
             <div id="game-over">
-                <h1>Partie terminée</h1>
+                <h1>${languageManager.get('UI.gameOverTitle')}</h1>
                 <p>${message}</p>
-                <h2>Score final</h2>
+                <h2>${languageManager.get('UI.finalScore')}</h2>
                 <div class="business-stats-grid">
-                    <span>Argent final:</span><span>${gameState.money.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}</span>
-                    <span>Dette:</span><span>(${gameState.debt.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })})</span>
-                    <span>Valeur des entreprises:</span><span>${totalBusinessValue.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}</span>
-                    <hr>
-                    <hr>
-                    <span>Score Total:</span><span>${finalScore.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}</span>
+                    <span>${languageManager.get('UI.finalMoney')}:</span><span>${gameState.money.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
+                    <span>${languageManager.get('UI.debt')}:</span><span>(${gameState.debt.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })})</span>
+                    <span>${languageManager.get('UI.businessValue')}:</span><span>${totalBusinessValue.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
+                    <hr><hr>
+                    <span>${languageManager.get('UI.totalScore')}:</span><span>${finalScore.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
                 </div>
-                <button id="restart-btn">Rejouer</button>
+                <button id="restart-btn">${languageManager.get('UI.playAgain')}</button>
             </div>
         `;
         document.getElementById('restart-btn').addEventListener('click', () => {
             gameScreen.classList.add('hidden');
             homeScreen.classList.remove('hidden');
+            renderHomeScreen();
         });
     }
 
     function showTravelModal() {
-        let modal = document.getElementById('modal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'modal';
-            document.body.appendChild(modal);
-        }
-
+        const modal = document.getElementById('modal');
+        const lang = languageManager.currentLang;
         const modalContent = `
             <div id="modal-content">
-                <h2>Où voyager ?</h2>
-                ${countries.map((country, index) => `
+                <h2>${languageManager.get('UI.travelTitle')}</h2>
+                ${i18nData[lang].COUNTRIES.map((country, index) => `
                     <button class="travel-dest-btn" data-index="${index}" ${index === gameState.currentCountryIndex ? 'disabled' : ''}>
                         ${country.name}
                     </button>
                 `).join('')}
-                <button id="close-modal-btn">Annuler</button>
+                <button id="close-modal-btn">${languageManager.get('UI.cancel')}</button>
             </div>
         `;
         modal.innerHTML = modalContent;
@@ -263,16 +295,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const modal = document.getElementById('modal');
         const modalContent = `
             <div id="modal-content">
-                <h2>Banque</h2>
-                <p>Votre dette actuelle est de: ${gameState.debt.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}</p>
+                <h2>${languageManager.get('UI.bankTitle')}</h2>
+                <p>${languageManager.get('UI.currentDebt')}: ${gameState.debt.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</p>
                 <div class="bank-action">
-                    <input type="number" id="repay-amount" placeholder="Montant à rembourser" min="0" max="${gameState.debt}">
-                    <button id="repay-btn">Rembourser</button>
+                    <input type="number" id="repay-amount" placeholder="${languageManager.get('UI.repayAmountPlaceholder')}" min="0" max="${gameState.debt}">
+                    <button id="repay-btn">${languageManager.get('UI.repay')}</button>
                 </div>
                 <div class="bank-action">
-                     <button id="borrow-btn" ${gameState.hasTakenExtraLoan ? 'disabled' : ''}>Emprunter 150 000 $</button>
+                     <button id="borrow-btn" ${gameState.hasTakenExtraLoan ? 'disabled' : ''}>${languageManager.get('UI.borrowButton')}</button>
                 </div>
-                <button id="close-modal-btn">Quitter la banque</button>
+                <button id="close-modal-btn">${languageManager.get('UI.leaveBank')}</button>
             </div>
         `;
         modal.innerHTML = modalContent;
@@ -293,21 +325,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function repayDebt(amount) {
-        if (isNaN(amount) || amount <= 0) {
-            alert("Montant invalide.");
-            return;
-        }
-        if (amount > gameState.money) {
-            alert("Vous n'avez pas assez d'argent.");
-            return;
-        }
-        if (amount > gameState.debt) {
-            amount = gameState.debt; // Cannot repay more than the debt
-        }
+        if (isNaN(amount) || amount <= 0) { alert(languageManager.get('UI.invalidAmount')); return; }
+        if (amount > gameState.money) { alert(languageManager.get('UI.notEnoughMoney')); return; }
+        if (amount > gameState.debt) { amount = gameState.debt; }
 
         gameState.money -= amount;
         gameState.debt -= amount;
-        gameState.log.unshift(`Vous avez remboursé ${amount.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}.`);
+        logEvent(languageManager.get('UI.repayLog').replace('{amount}', amount.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })));
         nextTurn();
         updateGameScreen();
     }
@@ -317,16 +341,13 @@ document.addEventListener('DOMContentLoaded', () => {
             gameState.hasTakenExtraLoan = true;
             gameState.money += 150000;
             gameState.debt += 150000;
-            // Reputation impact based on spec
             const totalIncome = gameState.allBusinesses.filter(b => b.owner === 'player').reduce((sum, b) => sum + (b.revenue - b.cost), 0);
             if (gameState.debt < totalIncome * 0.5) {
                 gameState.reputation += 0.5;
             } else {
-                // This part of spec is tricky: "-0.5 réputation par tour si emprunt est >50% de ses revenus"
-                // For now, let's just do a one-time hit. This could be a status effect later.
                 gameState.reputation -= 0.5;
             }
-            gameState.log.unshift(`Vous avez emprunté 150 000 $.`);
+            logEvent(languageManager.get('UI.borrowLog'));
             nextTurn();
             updateGameScreen();
         }
@@ -338,18 +359,15 @@ document.addEventListener('DOMContentLoaded', () => {
             gameState.money -= business.price;
             business.owner = 'player';
             gameState.reputation += 0.5;
-            gameState.log.unshift(`Vous avez acheté ${business.name} pour ${business.price.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}.`);
+            logEvent(languageManager.get('UI.buyLog').replace('{businessName}', business.name).replace('{price}', business.price.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })));
 
             const choiceEventTriggered = triggerEvents('buy', business);
-
-            // Don't call nextTurn() or updateGameScreen() if a choice modal was opened
-            // The modal handler will do it.
             if (!choiceEventTriggered) {
                  nextTurn();
                  updateGameScreen();
             }
         } else {
-            alert("Pas assez d'argent!");
+            alert(languageManager.get('UI.notEnoughMoney'));
         }
     }
 
@@ -359,26 +377,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const profit = business.revenue - business.cost;
             let salePriceMultiplier = 1.0;
 
-            // Handle specific sell events that modify the price
             const boycottEvent = gameEvents.find(e => e.id === 'SELL_EVENT_BOYCOTT');
             if (boycottEvent && Math.random() < boycottEvent.probability) {
-                salePriceMultiplier = 0.75; // 25% price reduction
-                const description = boycottEvent.description.replace('{businessName}', business.name);
-                gameState.log.unshift(`ÉVÉNEMENT: ${description}`);
+                salePriceMultiplier = 0.75;
+                const description = languageManager.getEvent('SELL_EVENT_BOYCOTT').replace('{businessName}', business.name);
+                logEvent(`ÉVÉNEMENT: ${description}`);
             }
 
             const salePrice = Math.floor(Math.max(0, profit * 12 * (1 + business.competitiveness)) * salePriceMultiplier);
-
             gameState.money += salePrice;
             business.owner = null;
             business.price = Math.floor(salePrice * (Math.random() * 0.4 + 0.8));
-
             gameState.reputation += 0.5;
 
-            // Trigger other sell events (like choice-based ones)
             const choiceEventTriggered = triggerEvents('sell', business);
-
-            gameState.log.unshift(`Vous avez vendu ${business.name} pour ${salePrice.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}.`);
+            logEvent(languageManager.get('UI.sellLog').replace('{businessName}', business.name).replace('{salePrice}', salePrice.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })));
 
             if (!choiceEventTriggered) {
                 nextTurn();
@@ -391,16 +404,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const potentialEvents = gameEvents.filter(e => e.trigger === triggerType);
         for (const event of potentialEvents) {
             if (Math.random() < event.probability) {
-                // Event is triggered
                 if (event.isChoice) {
                     event.effect(gameState, target);
-                    return true; // A choice modal was opened
+                    return true;
                 } else {
                     event.effect(gameState, target);
-                    const description = event.description.replace('{businessName}', target.name);
-                    gameState.log.unshift(`ÉVÉNEMENT: ${description}`);
+                    const description = languageManager.getEvent(event.id).replace('{businessName}', target.name);
+                    logEvent(`${languageManager.get('UI.eventPrefix')}: ${description}`);
                 }
-                // For simplicity, trigger only one event per action
                 return false;
             }
         }
@@ -409,15 +420,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showChoiceModal(event, target) {
         const modal = document.getElementById('modal');
-        const description = event.description.replace('{businessName}', target.name);
-
+        const description = languageManager.getEvent(event.id).replace('{businessName}', target ? target.name : '');
         const modalContent = `
             <div id="modal-content">
-                <h2>Opportunité!</h2>
+                <h2>${languageManager.get('UI.opportunity')}</h2>
                 <p>${description}</p>
                 <div class="choice-actions">
-                    <button id="accept-choice-btn">Accepter</button>
-                    <button id="decline-choice-btn">Refuser</button>
+                    <button id="accept-choice-btn">${languageManager.get('UI.accept')}</button>
+                    <button id="decline-choice-btn">${languageManager.get('UI.decline')}</button>
                 </div>
             </div>
         `;
@@ -425,13 +435,17 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.style.display = 'flex';
 
         document.getElementById('accept-choice-btn').addEventListener('click', () => {
-            event.resolve(gameState, target, true);
+            const logMessage = event.resolve(gameState, target, true);
+            if(logMessage) logEvent(logMessage);
             modal.style.display = 'none';
+            if (event.id.includes('TURN_EVENT')) nextTurn();
             updateGameScreen();
         });
         document.getElementById('decline-choice-btn').addEventListener('click', () => {
-            event.resolve(gameState, target, false);
+            const logMessage = event.resolve(gameState, target, false);
+            if(logMessage) logEvent(logMessage);
             modal.style.display = 'none';
+            if (event.id.includes('TURN_EVENT')) nextTurn();
             updateGameScreen();
         });
     }
@@ -443,22 +457,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const modal = document.getElementById('modal');
         const modalContent = `
             <div id="modal-content">
-                <h2>Gérer: ${business.name}</h2>
+                <h2>${languageManager.get('UI.manageTitle')}: ${business.name}</h2>
                 <div class="business-stats-grid">
-                    <span>Revenus/tour:</span><span>${business.revenue.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}</span>
-                    <span>Coûts/tour:</span><span>${business.cost.toLocaleString('fr-FR', { style: 'currency', currency: 'USD' })}</span>
-                    <span>Concurrentialité:</span><span>${(business.competitiveness * 100).toFixed(0)}%</span>
-                    <span>Niveau R&D:</span><span>${(business.rdLevel * 100).toFixed(0)}%</span>
+                    <span>${languageManager.get('UI.revenue')}/tour:</span><span>${business.revenue.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
+                    <span>${languageManager.get('UI.costs')}/tour:</span><span>${business.cost.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
+                    <span>${languageManager.get('UI.competitiveness')}:</span><span>${(business.competitiveness * 100).toFixed(0)}%</span>
+                    <span>${languageManager.get('UI.rdLevel')}:</span><span>${(business.rdLevel * 100).toFixed(0)}%</span>
                 </div>
                 <hr>
-                <h3>Actions de gestion</h3>
+                <h3>${languageManager.get('UI.managementActions')}</h3>
                 <div class="management-actions">
-                    <button id="invest-rd-btn">Investir en R&D (Coût: 25k$)</button>
-                    <button id="rationalize-btn">Rationaliser (Coût: 10k$)</button>
-                    <button id="launch-product-btn">Lancer un produit</button>
-                    <button id="strategic-plan-btn">Planification Stratégique (Coût: 50k$)</button>
+                    <button id="invest-rd-btn">${languageManager.get('UI.investRDButton')}</button>
+                    <button id="rationalize-btn">${languageManager.get('UI.rationalizeButton')}</button>
+                    <button id="launch-product-btn">${languageManager.get('UI.launchProductButton')}</button>
+                    <button id="strategic-plan-btn">${languageManager.get('UI.strategicPlanButton')}</button>
                 </div>
-                <button id="close-modal-btn">Fermer</button>
+                <button id="close-modal-btn">${languageManager.get('UI.close')}</button>
             </div>
         `;
         modal.innerHTML = modalContent;
@@ -474,12 +488,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function investInRD(businessId) {
         const business = gameState.allBusinesses.find(b => b.id === businessId);
         const cost = 25000;
-        if (gameState.money < cost) { alert("Pas assez d'argent!"); return; }
+        if (gameState.money < cost) { alert(languageManager.get('UI.notEnoughMoney')); return; }
 
         gameState.money -= cost;
         business.rdLevel = Math.min(1, business.rdLevel + 0.1);
         business.competitiveness = Math.min(1, business.competitiveness + 0.05);
-        gameState.log.unshift(`Vous avez investi en R&D pour ${business.name}.`);
+        logEvent(languageManager.get('UI.investRDLog').replace('{businessName}', business.name));
         nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';
@@ -488,12 +502,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function rationalizeCosts(businessId) {
         const business = gameState.allBusinesses.find(b => b.id === businessId);
         const cost = 10000;
-        if (gameState.money < cost) { alert("Pas assez d'argent!"); return; }
+        if (gameState.money < cost) { alert(languageManager.get('UI.notEnoughMoney')); return; }
 
         gameState.money -= cost;
-        business.cost *= 0.95; // 5% cost reduction
-        business.competitiveness *= 0.98; // 2% competitiveness reduction
-        gameState.log.unshift(`Vous avez rationalisé les coûts pour ${business.name}.`);
+        business.cost *= 0.95;
+        business.competitiveness *= 0.98;
+        logEvent(languageManager.get('UI.rationalizeLog').replace('{businessName}', business.name));
         nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';
@@ -501,12 +515,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function launchProduct(businessId) {
         const business = gameState.allBusinesses.find(b => b.id === businessId);
-        if (business.rdLevel < 0.5) { alert("Niveau de R&D trop faible pour lancer un produit!"); return; }
+        if (business.rdLevel < 0.5) { alert(languageManager.get('UI.rdLevelTooLow')); return; }
 
         business.revenue *= 1.5;
         business.cost *= 1.25;
         business.rdLevel *= 0.5;
-        gameState.log.unshift(`Nouveau lancement de produit réussi pour ${business.name}!`);
+        logEvent(languageManager.get('UI.launchProductLog').replace('{businessName}', business.name));
         nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';
@@ -515,26 +529,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function strategicPlanning(businessId) {
         const business = gameState.allBusinesses.find(b => b.id === businessId);
         const cost = 50000;
-        if (gameState.money < cost) { alert("Pas assez d'argent!"); return; }
+        if (gameState.money < cost) { alert(languageManager.get('UI.notEnoughMoney')); return; }
 
         gameState.money -= cost;
         if (business.competitiveness > 0.5) {
             business.revenue *= 1.1;
-            gameState.log.unshift(`La planification stratégique a augmenté les revenus de ${business.name}.`);
+            logEvent(languageManager.get('UI.strategicPlanSuccessLog').replace('{businessName}', business.name));
         } else {
-            gameState.log.unshift(`La planification stratégique n'a pas eu d'effet notable pour ${business.name}.`);
+            logEvent(languageManager.get('UI.strategicPlanFailLog').replace('{businessName}', business.name));
         }
         nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';
     }
 
-
-    newGameButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const turns = parseInt(button.getAttribute('data-turns'), 10);
-            startGame(turns);
-        });
-    });
-
+    renderHomeScreen();
 });

@@ -1,0 +1,189 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+#game-container {
+    width: 100%;
+    max-width: 480px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+#home-screen {
+    padding: 20px;
+    text-align: center;
+}
+
+h1 {
+    color: #333;
+}
+
+#new-game-options h2 {
+    margin-top: 0;
+}
+
+.new-game-btn, button {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    margin: 10px 0;
+    font-size: 1em;
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.hidden {
+    display: none;
+}
+
+#game-screen {
+    padding: 20px;
+}
+
+.business-card {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.business-card h4 {
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+
+.business-card p {
+    margin: 0 0 10px;
+}
+
+.business-card button {
+    padding: 8px 12px;
+    font-size: 0.9em;
+    width: auto;
+    margin-right: 5px;
+    display: inline-block;
+}
+
+/* Modal Styles */
+#modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    justify-content: center;
+    align-items: center;
+}
+
+#modal-content {
+    background-color: #fefefe;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+#modal-content h2 {
+    margin-top: 0;
+}
+
+#modal-content button {
+    margin-top: 10px;
+}
+
+#close-modal-btn {
+    background-color: #f44336; /* Red */
+}
+
+.bank-action {
+    margin: 15px 0;
+}
+
+.bank-action input {
+    padding: 10px;
+    width: 60%;
+    margin-right: 10px;
+}
+
+/* Log Styles */
+#log-container {
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    height: 150px;
+    overflow-y: scroll;
+    background-color: #fafafa;
+}
+
+#log-container p {
+    margin: 0 0 8px;
+    font-size: 0.9em;
+    color: #555;
+    border-bottom: 1px dotted #ccc;
+    padding-bottom: 5px;
+}
+
+.business-stats-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    text-align: left;
+    margin: 15px 0;
+}
+
+.business-stats-grid span:nth-child(odd) {
+    font-weight: bold;
+}
+
+.management-actions {
+    margin: 20px 0;
+}
+
+.management-actions button {
+    display: block;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.choice-actions {
+    margin: 20px 0;
+}
+
+.choice-actions button {
+    width: 48%;
+    display: inline-block;
+}
+
+#accept-choice-btn {
+    background-color: #4CAF50; /* Green */
+}
+
+#decline-choice-btn {
+    background-color: #f44336; /* Red */
+}

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business War</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="home-screen">
+            <h1>Business War</h1>
+            <div id="new-game-options">
+                <h2>Nouvelle partie</h2>
+                <button class="new-game-btn" data-turns="10">Courte (10 jours)</button>
+                <button class="new-game-btn" data-turns="30">Normale (30 jours)</button>
+                <button class="new-game-btn" data-turns="60">Toute la nuit (60 jours)</button>
+            </div>
+            <div id="other-options">
+                <button disabled>Tableau des scores</button>
+                <button disabled>Crédits</button>
+            </div>
+        </div>
+        <div id="game-screen" class="hidden">
+            <!-- Le contenu du jeu sera généré ici -->
+        </div>
+    </div>
+    <div id="modal" style="display: none;"></div>
+    <script src="js/data.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

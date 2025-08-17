@@ -30,6 +30,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    function formatMoney(n) {
+        if (n < 1e3) return n.toFixed(0);
+        if (n >= 1e3 && n < 1e6) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + "K";
+        if (n >= 1e6 && n < 1e9) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + "M";
+        if (n >= 1e9 && n < 1e12) return (n / 1e9).toFixed(1).replace(/\.0$/, '') + "B";
+        if (n >= 1e12) return (n / 1e12).toFixed(1).replace(/\.0$/, '') + "T";
+    };
+
     function logEvent(message) {
         if (typeof message === 'string') {
             gameState.log.unshift(message);
@@ -101,7 +109,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const profit = revenue - cost;
                 const risk = Math.random();
-                const price = Math.max(10000, Math.floor(profit * 12 * (1 + competitiveness) * (1 - risk)));
+                let price = Math.floor(profit * 12 * (1 + competitiveness) * (1 - risk));
+
+                if (i < 3) { // First 3 countries have a 20% discount
+                    price *= 0.8;
+                }
+
+                price = Math.max(10000, price);
+
 
                 businesses.push({
                     id: nextBusinessId++,
@@ -159,8 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div id="player-stats">
                 <h3>${languageManager.get('UI.stats')}</h3>
-                <p>💰 ${languageManager.get('UI.money')}: ${gameState.money.toLocaleString(lang, { style: 'currency', currency: 'USD' })}</p>
-                <p>💳 ${languageManager.get('UI.debt')}: ${gameState.debt.toLocaleString(lang, { style: 'currency', currency: 'USD' })}</p>
+                <p>💰 ${languageManager.get('UI.money')}: ${formatMoney(gameState.money)}</p>
+                <p>💳 ${languageManager.get('UI.debt')}: ${formatMoney(gameState.debt)}</p>
                 <p>📈 ${languageManager.get('UI.reputation')}: ${gameState.reputation}</p>
                 <p>🏢 ${languageManager.get('UI.businesses')}: ${gameState.allBusinesses.filter(b => b.owner === 'player').length}</p>
             </div>
@@ -174,8 +189,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${marketBusinesses.length > 0 ? marketBusinesses.map(b => `
                     <div class="business-card">
                         <h4>${b.name} (${b.type})</h4>
-                        <p>${languageManager.get('UI.estimatedRevenue')}: ${b.revenue.toLocaleString(lang, { style: 'currency', currency: 'USD' })}/tour</p>
-                        <p>${languageManager.get('UI.price')}: ${b.price.toLocaleString(lang, { style: 'currency', currency: 'USD' })}</p>
+                        <p>${languageManager.get('UI.estimatedRevenue')}: ${formatMoney(b.revenue)}/tour</p>
+                        <p>${languageManager.get('UI.price')}: ${formatMoney(b.price)}</p>
                         <button class="buy-btn" data-id="${b.id}">${languageManager.get('UI.buy')}</button>
                     </div>
                 `).join('') : `<p>${languageManager.get('UI.noBusinessForSale')}</p>`}
@@ -185,8 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
                  ${ownedBusinesses.length > 0 ? ownedBusinesses.map(b => `
                     <div class="business-card">
                         <h4>${b.name} (${b.type})</h4>
-                        <p>${languageManager.get('UI.revenue')}: ${b.revenue.toLocaleString(lang, { style: 'currency', currency: 'USD' })}/tour</p>
-                        <p>${languageManager.get('UI.costs')}: ${b.cost.toLocaleString(lang, { style: 'currency', currency: 'USD' })}/tour</p>
+                        <p>${languageManager.get('UI.revenue')}: ${formatMoney(b.revenue)}/tour</p>
+                        <p>${languageManager.get('UI.costs')}: ${formatMoney(b.cost)}/tour</p>
                         <button class="sell-btn" data-id="${b.id}">${languageManager.get('UI.sell')}</button>
                         <button class="manage-btn" data-id="${b.id}">${languageManager.get('UI.manage')}</button>
                     </div>
@@ -318,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p>${message}</p>
                 <h2>${languageManager.get('UI.finalScore')}</h2>
                 <div class="business-stats-grid">
-                    <span>🏆 ${languageManager.get('UI.netWorth')}:</span><span>${finalScore.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
+                    <span>🏆 ${languageManager.get('UI.netWorth')}:</span><span>${formatMoney(finalScore)}</span>
                     <span>📈 ${languageManager.get('UI.reputation')}:</span><span>${gameState.reputation}</span>
                     <span>🏢 ${languageManager.get('UI.ownedBusinesses')}:</span><span>${ownedBusinesses.length}</span>
                     <span>🔬 ${languageManager.get('UI.avgRD')}:</span><span>${avgRD}%</span>
@@ -379,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const modalContent = `
             <div id="modal-content">
                 <h2>${languageManager.get('UI.bankTitle')}</h2>
-                <p>${languageManager.get('UI.currentDebt')}: ${gameState.debt.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</p>
+                <p>${languageManager.get('UI.currentDebt')}: ${formatMoney(gameState.debt)}</p>
                 <div class="bank-action">
                     <input type="number" id="repay-amount" placeholder="${languageManager.get('UI.repayAmountPlaceholder')}" min="0" max="${gameState.debt}">
                     <button id="repay-btn">${languageManager.get('UI.repay')}</button>
@@ -414,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         gameState.money -= amount;
         gameState.debt -= amount;
-        logEvent(languageManager.get('UI.repayLog').replace('{amount}', amount.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })));
+        logEvent(languageManager.get('UI.repayLog').replace('{amount}', formatMoney(amount)));
         nextTurn();
         updateGameScreen();
     }
@@ -442,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gameState.money -= business.price;
             business.owner = 'player';
             gameState.reputation += 0.5;
-            logEvent(languageManager.get('UI.buyLog').replace('{businessName}', business.name).replace('{price}', business.price.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })));
+            logEvent(languageManager.get('UI.buyLog').replace('{businessName}', business.name).replace('{price}', formatMoney(business.price)));
 
             const eventTriggered = triggerEvents('buy', business);
             if (!eventTriggered) {
@@ -486,7 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
         business.price = Math.floor(salePrice * (Math.random() * 0.4 + 0.8));
         gameState.reputation += 0.5;
 
-        logEvent(languageManager.get('UI.sellLog').replace('{businessName}', business.name).replace('{salePrice}', salePrice.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })));
+        logEvent(languageManager.get('UI.sellLog').replace('{businessName}', business.name).replace('{salePrice}', formatMoney(salePrice)));
 
         nextTurn();
         updateGameScreen();
@@ -586,24 +601,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const modal = document.getElementById('modal');
         const upgradeCost = business.price * 2 * business.level;
+        const marketingCost = business.price * 0.5;
         const modalContent = `
             <div id="modal-content">
                 <h2>${languageManager.get('UI.manageTitle')}: ${business.name} (Lvl ${business.level})</h2>
                 <div class="business-stats-grid">
-                    <span>${languageManager.get('UI.revenue')}/tour:</span><span>${business.revenue.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
-                    <span>${languageManager.get('UI.costs')}/tour:</span><span>${business.cost.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</span>
+                    <span>${languageManager.get('UI.revenue')}/tour:</span><span>${formatMoney(business.revenue)}</span>
+                    <span>${languageManager.get('UI.costs')}/tour:</span><span>${formatMoney(business.cost)}</span>
                     <span>${languageManager.get('UI.competitiveness')}:</span><span>${(business.competitiveness * 100).toFixed(0)}%</span>
                     <span>${languageManager.get('UI.rdLevel')}:</span><span>${(business.rdLevel * 100).toFixed(0)}%</span>
                 </div>
                 <hr>
                 <h3>${languageManager.get('UI.managementActions')}</h3>
                 <div class="management-actions">
-                    <button id="invest-rd-btn">${languageManager.get('UI.investRDButton')}</button>
-                    <button id="rationalize-btn">${languageManager.get('UI.rationalizeButton')}</button>
-                    <button id="launch-product-btn">${languageManager.get('UI.launchProductButton')}</button>
-                    <button id="strategic-plan-btn">${languageManager.get('UI.strategicPlanButton')}</button>
-                    <button id="upgrade-btn">${languageManager.get('UI.upgradeButton').replace('{cost}', upgradeCost.toLocaleString(languageManager.currentLang, {style: 'currency', currency: 'USD'}))}</button>
-                    <button id="marketing-btn" ${business.marketing.active ? 'disabled' : ''}>${languageManager.get('UI.marketingButton')}</button>
+                    <div class="action-group">
+                        <button id="invest-rd-btn">${languageManager.get('UI.investRDButton')}</button>
+                        <div class="action-desc">${languageManager.get('UI.investRDDescription')}</div>
+                    </div>
+                    <div class="action-group">
+                        <button id="rationalize-btn">${languageManager.get('UI.rationalizeButton')}</button>
+                        <div class="action-desc">${languageManager.get('UI.rationalizeDescription')}</div>
+                    </div>
+                    <div class="action-group">
+                        <button id="launch-product-btn">${languageManager.get('UI.launchProductButton')}</button>
+                        <div class="action-desc">${languageManager.get('UI.launchProductDescription')}</div>
+                    </div>
+                    <div class="action-group">
+                        <button id="strategic-plan-btn">${languageManager.get('UI.strategicPlanButton')}</button>
+                        <div class="action-desc">${languageManager.get('UI.strategicPlanDescription')}</div>
+                    </div>
+                    <div class="action-group">
+                        <button id="upgrade-btn">${languageManager.get('UI.upgradeButton').replace('{cost}', formatMoney(upgradeCost))}</button>
+                        <div class="action-desc">${languageManager.get('UI.upgradeDescription')}</div>
+                    </div>
+                    <div class="action-group">
+                        <button id="marketing-btn" ${business.marketing.active ? 'disabled' : ''}>${languageManager.get('UI.marketingButton').replace('{cost}', formatMoney(marketingCost))}</button>
+                        <div class="action-desc">${languageManager.get('UI.marketingDescription')}</div>
+                    </div>
                 </div>
                 <button id="close-modal-btn">${languageManager.get('UI.close')}</button>
             </div>
@@ -747,7 +781,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 leaderboardHTML += `
                     <tr>
                         <td>#${index + 1}</td>
-                        <td>${score.score.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })}</td>
+                        <td>${formatMoney(score.score)}</td>
                         <td>
                             <span title="${languageManager.get('UI.reputation')}">📈 ${score.reputation}</span> |
                             <span title="${languageManager.get('UI.ownedBusinesses')}">🏢 ${score.businesses}</span> |

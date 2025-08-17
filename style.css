@@ -201,6 +201,25 @@ button:disabled {
     text-align: left;
 }
 
+.action-group {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.action-group button {
+    flex-shrink: 0;
+}
+
+.action-desc {
+    font-size: 0.9em;
+    color: #555;
+    margin-left: 15px;
+    text-align: left;
+    font-style: italic;
+}
+
 .leaderboard th {
     background-color: #f2f2f2;
 }

@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 businesses.push({
                     id: nextBusinessId++,
-                    name: `${name} #${nextBusinessId-1}`,
+                    name: `${country.name} - ${name}`,
                     type: typeName,
                     typeKey: typeKey, // Store key for easier lookup
                     countryIndex: i,

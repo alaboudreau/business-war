@@ -147,10 +147,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateGameScreen() {
+        if (gameState.turns <= 0) {
+            gameOver(languageManager.get('UI.gameOverTime'));
+            return;
+        }
+
         const lang = languageManager.currentLang;
         const currentCountry = i18nData[lang].COUNTRIES[gameState.currentCountryIndex];
         const ownedBusinesses = gameState.allBusinesses.filter(b => b.owner === 'player' && b.countryIndex === gameState.currentCountryIndex);
         const marketBusinesses = gameState.allBusinesses.filter(b => b.owner === null && b.countryIndex === gameState.currentCountryIndex);
+        const isLastDay = gameState.turns <= 1;
 
         gameScreen.innerHTML = `
             <div>
@@ -166,8 +172,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div id="actions">
                 <h3>${languageManager.get('UI.actions')}</h3>
-                <button id="travel-btn">${languageManager.get('UI.travel')}</button>
-                ${currentCountry.bank ? `<button id="bank-btn">${languageManager.get('UI.visitBank')}</button>` : ''}
+                ${isLastDay ?
+                    `<button id="finish-btn">${languageManager.get('UI.scoreboard')}</button>` :
+                    `<button id="travel-btn">${languageManager.get('UI.travel')}</button>`
+                }
+                ${currentCountry.bank ? `<button id="bank-btn" ${isLastDay ? 'disabled' : ''}>${languageManager.get('UI.visitBank')}</button>` : ''}
             </div>
             <div id="businesses-market">
                 <h3>${languageManager.get('UI.localMarket')}</h3>
@@ -176,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h4>${b.name} (${b.type})</h4>
                         <p>${languageManager.get('UI.estimatedRevenue')}: ${b.revenue.toLocaleString(lang, { style: 'currency', currency: 'USD' })}/tour</p>
                         <p>${languageManager.get('UI.price')}: ${b.price.toLocaleString(lang, { style: 'currency', currency: 'USD' })}</p>
-                        <button class="buy-btn" data-id="${b.id}">${languageManager.get('UI.buy')}</button>
+                        <button class="buy-btn" data-id="${b.id}" ${isLastDay ? 'disabled' : ''}>${languageManager.get('UI.buy')}</button>
                     </div>
                 `).join('') : `<p>${languageManager.get('UI.noBusinessForSale')}</p>`}
             </div>
@@ -187,8 +196,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h4>${b.name} (${b.type})</h4>
                         <p>${languageManager.get('UI.revenue')}: ${b.revenue.toLocaleString(lang, { style: 'currency', currency: 'USD' })}/tour</p>
                         <p>${languageManager.get('UI.costs')}: ${b.cost.toLocaleString(lang, { style: 'currency', currency: 'USD' })}/tour</p>
-                        <button class="sell-btn" data-id="${b.id}">${languageManager.get('UI.sell')}</button>
-                        <button class="manage-btn" data-id="${b.id}">${languageManager.get('UI.manage')}</button>
+                        <button class="sell-btn" data-id="${b.id}" ${isLastDay ? 'disabled' : ''}>${languageManager.get('UI.sell')}</button>
+                        <button class="manage-btn" data-id="${b.id}" ${isLastDay ? 'disabled' : ''}>${languageManager.get('UI.manage')}</button>
                     </div>
                 `).join('') : `<p>${languageManager.get('UI.noBusinessOwned')}</p>`}
             </div>
@@ -199,21 +208,25 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         // Add event listeners
-        if (document.getElementById('travel-btn')) {
-            document.getElementById('travel-btn').addEventListener('click', showTravelModal);
+        if (isLastDay) {
+            document.getElementById('finish-btn').addEventListener('click', () => gameOver(languageManager.get('UI.gameOverTime')));
+        } else {
+            if (document.getElementById('travel-btn')) {
+                document.getElementById('travel-btn').addEventListener('click', showTravelModal);
+            }
+            if (document.getElementById('bank-btn')) {
+                document.getElementById('bank-btn').addEventListener('click', showBankModal);
+            }
+            document.querySelectorAll('.buy-btn').forEach(button => {
+                button.addEventListener('click', (e) => buyBusiness(parseInt(e.target.dataset.id, 10)));
+            });
+            document.querySelectorAll('.sell-btn').forEach(button => {
+                button.addEventListener('click', (e) => sellBusiness(parseInt(e.target.dataset.id, 10)));
+            });
+            document.querySelectorAll('.manage-btn').forEach(button => {
+                button.addEventListener('click', (e) => showManagementModal(parseInt(e.target.dataset.id, 10)));
+            });
         }
-        if (document.getElementById('bank-btn')) {
-            document.getElementById('bank-btn').addEventListener('click', showBankModal);
-        }
-        document.querySelectorAll('.buy-btn').forEach(button => {
-            button.addEventListener('click', (e) => buyBusiness(parseInt(e.target.dataset.id, 10)));
-        });
-        document.querySelectorAll('.sell-btn').forEach(button => {
-            button.addEventListener('click', (e) => sellBusiness(parseInt(e.target.dataset.id, 10)));
-        });
-        document.querySelectorAll('.manage-btn').forEach(button => {
-            button.addEventListener('click', (e) => showManagementModal(parseInt(e.target.dataset.id, 10)));
-        });
     }
 
     function nextTurn() {
@@ -409,13 +422,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function repayDebt(amount) {
         if (isNaN(amount) || amount <= 0) { alert(languageManager.get('UI.invalidAmount')); return; }
-        if (amount > gameState.money) { alert(languageManager.get('UI.notEnoughMoney')); return; }
         if (amount > gameState.debt) { amount = gameState.debt; }
+        if (amount > gameState.money) { alert(languageManager.get('UI.notEnoughMoney')); return; }
 
         gameState.money -= amount;
         gameState.debt -= amount;
         logEvent(languageManager.get('UI.repayLog').replace('{amount}', amount.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })));
-        nextTurn();
         updateGameScreen();
     }
 
@@ -431,7 +443,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameState.reputation -= 0.5;
             }
             logEvent(languageManager.get('UI.borrowLog'));
-            nextTurn();
             updateGameScreen();
         }
     }
@@ -446,7 +457,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const eventTriggered = triggerEvents('buy', business);
             if (!eventTriggered) {
-                 nextTurn();
                  updateGameScreen();
             }
         } else {
@@ -488,7 +498,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         logEvent(languageManager.get('UI.sellLog').replace('{businessName}', business.name).replace('{salePrice}', salePrice.toLocaleString(languageManager.currentLang, { style: 'currency', currency: 'USD' })));
 
-        nextTurn();
         updateGameScreen();
     }
 
@@ -545,7 +554,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (event.trigger === 'turn_start') {
                 nextTurn();
             } else {
-                nextTurn();
                 updateGameScreen();
             }
         };
@@ -635,7 +643,6 @@ document.addEventListener('DOMContentLoaded', () => {
         business.rdLevel = Math.min(1, business.rdLevel + (0.15 * rdEffectiveness));
         business.competitiveness = Math.min(1, business.competitiveness * 1.25);
         logEvent(languageManager.get('UI.investRDLog').replace('{businessName}', business.name));
-        nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';
     }
@@ -652,7 +659,6 @@ document.addEventListener('DOMContentLoaded', () => {
         business.price = Math.floor(business.price * 2.5); // New base price for future upgrades
 
         logEvent(languageManager.get('UI.upgradeLog').replace('{businessName}', business.name).replace('{level}', business.level));
-        nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';
     }
@@ -666,7 +672,6 @@ document.addEventListener('DOMContentLoaded', () => {
         business.cost *= 0.95;
         business.competitiveness *= 0.98;
         logEvent(languageManager.get('UI.rationalizeLog').replace('{businessName}', business.name));
-        nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';
     }
@@ -687,7 +692,6 @@ document.addEventListener('DOMContentLoaded', () => {
             logEvent(languageManager.get('UI.launchProductFailLog').replace('{businessName}', business.name));
         }
 
-        nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';
     }
@@ -704,7 +708,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             logEvent(languageManager.get('UI.strategicPlanFailLog').replace('{businessName}', business.name));
         }
-        nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';
     }
@@ -719,7 +722,6 @@ document.addEventListener('DOMContentLoaded', () => {
         business.marketing.turnsRemaining = 5; // Campaign lasts for 5 turns
 
         logEvent(languageManager.get('UI.marketingLog').replace('{businessName}', business.name));
-        nextTurn();
         updateGameScreen();
         document.getElementById('modal').style.display = 'none';
     }

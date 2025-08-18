@@ -231,8 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function nextTurn() {
         if (gameState.turns <= 0) return;
-        const eventTriggered = triggerEvents('turn_start');
-        if (eventTriggered) { return; }
+        triggerEvents('turn_start');
 
         // Global Events
         if (Math.random() < 0.1) { // 10% chance of a global event
@@ -376,11 +375,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function travelTo(countryIndex) {
         if (countryIndex !== gameState.currentCountryIndex) {
             gameState.currentCountryIndex = countryIndex;
+
+            // A travel action always triggers a turn.
+            nextTurn();
+
+            // Now, check if a special event happened during travel.
             const eventTriggered = triggerEvents('travel');
+
             if (!eventTriggered) {
-                nextTurn();
+                // If no event, just update the screen. The turn has already been processed.
                 updateGameScreen();
             }
+            // If an event was triggered, it shows a modal. The modal's OK button
+            // will call updateGameScreen(), so we don't need to do it here.
         }
     }
 
@@ -552,7 +559,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.trigger === 'sell') {
                 completeSellBusiness(target.id);
             } else if (event.trigger === 'turn_start') {
-                nextTurn();
+                // Turn is already happening, just update screen
+                updateGameScreen();
             } else {
                 updateGameScreen();
             }

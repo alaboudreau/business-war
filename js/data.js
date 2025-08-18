@@ -313,11 +313,11 @@ const gameEvents = [
             en: "Your journey is interrupted by an unexpected problem."
         },
         description: {
-            fr: "Votre vol a été annulé à cause d'une grève des contrôleurs aériens! Vous perdez un jour à trouver un autre vol.",
-            en: "Your flight was canceled due to an air traffic controller strike! You lose a day finding another flight."
+            fr: "Votre vol a été annulé à cause d'une grève des contrôleurs aériens! Vous perdez un jour supplémentaire à trouver un autre vol.",
+            en: "Your flight was canceled due to an air traffic controller strike! You lose an extra day finding another flight."
         },
         probability: 0.05,
-        effect: (gameState) => { gameState.turns--; }
+        effect: (gameState) => { nextTurn(); }
     },
     {
         id: 'TURN_EVENT_GOV_CONTRACT',

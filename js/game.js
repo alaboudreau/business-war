@@ -519,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const event of potentialEvents) {
             if (Math.random() < event.probability) {
                 if (event.isChoice) {
-                    event.effect(gameState, target);
+                    showChoiceModal(event, target);
                 } else {
                     event.effect(gameState, target);
                     showEventModal(event, target);

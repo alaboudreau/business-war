@@ -263,7 +263,6 @@ const gameEvents = [
         isChoice: true,
         acceptText: { fr: "Accepter l'argent sale", en: "Accept the dirty money" },
         declineText: { fr: "Refuser poliment", en: "Politely refuse" },
-        effect: (gameState, business) => { showChoiceModal(gameEvents.find(e => e.id === 'BUY_EVENT_MONEY_LAUNDERING'), business); },
         resolve: (gameState, business, choice) => {
             if (choice) {
                 business.revenue *= 1.25;
@@ -289,7 +288,6 @@ const gameEvents = [
         isChoice: true,
         acceptText: { fr: "Céder et baisser le prix", en: "Give in and lower the price" },
         declineText: { fr: "Tenir bon (risque d'échec)", en: "Hold firm (risk failure)" },
-        effect: (gameState, business) => { showChoiceModal(gameEvents.find(e => e.id === 'SELL_EVENT_BOYCOTT'), business); },
         resolve: (gameState, business, choice) => {
             if (choice) {
                 // This is a flag the sellBusiness function will check
@@ -334,7 +332,6 @@ const gameEvents = [
         isChoice: true,
         acceptText: { fr: "Accepter le contrat", en: "Accept the contract" },
         declineText: { fr: "Refuser l'offre", en: "Refuse the offer" },
-        effect: (gameState) => { showChoiceModal(gameEvents.find(e => e.id === 'TURN_EVENT_GOV_CONTRACT')); },
         resolve: (gameState, target, choice) => {
             if (choice) {
                 const ownedBusinesses = gameState.allBusinesses.filter(b => b.owner === 'player');
